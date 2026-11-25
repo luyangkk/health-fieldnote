@@ -10,14 +10,16 @@ import {readCloud,saveCloud,syncKey} from './cloud'
 import './style.css'
 const nav=[['home','今日总览',LayoutDashboard],['log','每日记录',List],['trend','趋势分析',BarChart3],['data','数据管理',ArrowDownToLine]]
 const kinds={meal:['饮食',Utensils],workout:['运动',Dumbbell],metric:['身体指标',Scale]}
-const captions={intake:'千卡',steps:'步',strength:'分钟',weight:'kg'}
-const labels={intake:'摄入热量',steps:'日常步数',strength:'力量训练',weight:'体重趋势'}
+const captions={intake:'千卡',steps:'步',strength:'分钟',weight:'kg',bodyFat:'%'}
+const labels={intake:'摄入热量',steps:'日常步数',strength:'力量训练',weight:'体重趋势',bodyFat:'体脂率趋势'}
 const id=()=>globalThis.crypto.randomUUID()
 const weekStart=d=>add(d,-((new Date(d+'T12:00:00Z').getUTCDay()+6)%7))
+const totalOn=(db,date)=>db.dailyTotals?.find(row=>row.date===date)
+const targetOn=(db,date)=>db.targetSchedule?.filter(row=>row.date<=date).sort((a,b)=>b.date.localeCompare(a.date))[0]?.kcal??(db.targetSchedule?.length?1900:db.target)
 const values=(db,d,n,what)=>dates(d,n).map(date=>{
  if(what==='steps') {const a=db.activity.find(r=>r.date===date);return {date,v:a?.steps??null,partial:a?.partial}}
- if(what==='weight') return {date,v:db.metrics.find(r=>r.date===date)?.weight??null}
- if(what==='intake'){const m=db.meals.filter(r=>r.date===date);return {date,v:m.length?sum(m,'kcal'):null,partial:!db.completed.includes(date)}}
+ if(what==='weight'||what==='bodyFat') {const key=what==='weight'?'weight':'bodyFatPct';return {date,v:db.metrics.filter(r=>r.date===date&&r[key]!=null).sort((a,b)=>(b.time??'').localeCompare(a.time??''))[0]?.[key]??null}}
+ if(what==='intake'){const m=db.meals.filter(r=>r.date===date);return {date,v:totalOn(db,date)?.kcal??(m.length?sum(m,'kcal'):null),partial:!db.completed.includes(date)}}
  const w=db.workouts.filter(r=>r.date===date&&r.type.includes('力量')&&!r.flag)
  return {date,v:w.length?sum(w,'minutes'):null}
 })
@@ -25,8 +27,8 @@ function TrendChart({db,day,period=7,metric='intake'}){
  const data=values(db,day,period,metric)
  const filled=data.filter(e=>e.v!=null)
  const nums=filled.map(e=>e.v)
- const isWeight=metric==='weight', grid=isWeight?4:3
- const high=isWeight?Math.ceil((Math.max(...nums,0)+.2)*2)/2:Math.ceil(Math.max(...nums,(metric==='intake'?db.target:metric==='steps'?5000:60))*1.06/(metric==='strength'?30:500))*(metric==='strength'?30:500)
+ const isWeight=metric==='weight'||metric==='bodyFat', grid=isWeight?4:3, target=targetOn(db,day)
+ const high=isWeight?Math.ceil((Math.max(...nums,0)+.2)*2)/2:Math.ceil(Math.max(...nums,(metric==='intake'?target:metric==='steps'?5000:60))*1.06/(metric==='strength'?30:500))*(metric==='strength'?30:500)
  const actualLow=isWeight&&nums.length?Math.min(high-1,Math.floor((Math.min(...nums)-.15)*2)/2):0
  const bounds=Array.from({length:grid+1},(_,i)=>high-(high-actualLow)*i/grid)
  const scale=v=>Math.min(100,Math.max(0,(v-actualLow)/(high-actualLow)*100))
@@ -37,12 +39,12 @@ function TrendChart({db,day,period=7,metric='intake'}){
    <div className="chart-unit">
     <div className="chart-plot">
      <div className="chart-grid">{bounds.map((_,i)=><i key={i}/>)}</div>
-     {metric==='intake'&&<i className="chart-target" style={{bottom:scale(db.target)+'%'}} title={'目标 '+db.target+' 千卡'}/>}
+     {metric==='intake'&&<i className="chart-target" style={{bottom:scale(target)+'%'}} title={'目标 '+target+' 千卡'}/>}
      {isWeight&&filled.length>0&&<svg className="weight-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={data.flatMap((x,i)=>x.v==null?[]:[xs(i)+','+(100-scale(x.v))]).join(' ')} fill="none" stroke="#285c49" strokeWidth="2" vectorEffect="non-scaling-stroke"/></svg>}
      {filled.length===0&&<div className="chart-empty">这段时间还没有记录</div>}
      <div className={'chart-bars '+(period>7?'compact':'')} style={{gridTemplateColumns:'repeat('+period+',minmax(0,1fr))'}}>
       {data.map((e,i)=><div key={e.date} className="bar-slot">
-       {e.v!=null&&(isWeight?<span className="weight-dot" style={{bottom:scale(e.v)+'%'}} title={e.date+'：'+e.v+' kg'}/>:<span title={e.date+'：'+fmt(e.v,1)+' '+captions[metric]+(e.partial?'（部分记录）':'')} className={'bar '+(e.partial?'partial':'')+' '+(i===period-1?'focusbar':'')} style={{height:Math.max(scale(e.v),1)+'%'}}/>)}
+       {e.v!=null&&(isWeight?<span className="weight-dot" style={{bottom:scale(e.v)+'%'}} title={e.date+'：'+e.v+' '+captions[metric]}/>:<span title={e.date+'：'+fmt(e.v,1)+' '+captions[metric]+(e.partial?'（部分记录）':'')} className={'bar '+(e.partial?'partial':'')+' '+(i===period-1?'focusbar':'')} style={{height:Math.max(scale(e.v),1)+'%'}}/>)}
       </div>)}
      </div>
     </div>
@@ -60,15 +62,15 @@ function Entry({kind,setKind,row,day,onSave,onDelete}){
   let v,key
   if(kind==='meal'){key='meals';v={...base,type:f.get('type'),name:f.get('name').trim(),kcal:val('kcal'),protein:val('protein'),estimate:f.has('estimate')}}
   if(kind==='workout'){key='workouts';v={...base,type:f.get('type').trim(),time:f.get('time'),minutes:val('minutes'),kcal:val('kcal'),source:row?.source??'手动',flag:f.has('flag')}}
-  if(kind==='metric'){key='metrics';v={...base,id:'metric:'+date,weight:val('weight'),waist:val('waist')}}
-  try{const rec=validate({version:1,[key]:[v]})[key][0];onSave(key,rec,row)}catch{setError(kind==='metric'?'至少填一项，可同时记录体重和腰围。':'请检查日期和数值，或补齐必要的字段。')}
+  if(kind==='metric'){key='metrics';v={...base,weight:val('weight'),waist:val('waist'),bodyFatPct:val('bodyFatPct'),time:f.get('measurementTime')||null}}
+  try{const rec=validate({version:1,[key]:[v]})[key][0];onSave(key,rec,row)}catch{setError(kind==='metric'?'请至少填写一项有效的身体指标。':'请检查日期和数值，或补齐必要的字段。')}
  }
  return <>
  <DialogTitle>{row?'编辑记录':'添加记录'}</DialogTitle>
  <DialogDescription>{row?'修改会保存到当前启用的存储位置。':'记下你想跟踪的项目，没测的数据可以留空。'}</DialogDescription>
  {!row&&<div className="segmented entry-tabs">{Object.entries(kinds).map(([k,[l,I]])=><button key={k} className={kind===k?'selected':''} onClick={()=>setKind(k)} type="button"><I size={15}/>{l}</button>)}</div>}
  <form onSubmit={submit} key={kind} className="form">
-  <div className="form-row"><Field label="日期"><input name="date" type="date" defaultValue={row?.date??day} required/></Field>{kind==='workout'&&<Field label="开始时间"><input name="time" type="time" step="1" defaultValue={row?.time??'12:00'} required/></Field>}</div>
+  <div className={kind==='metric'?'form-row measurement-time':'form-row'}><Field label="日期"><input name="date" type="date" defaultValue={row?.date??day} required/></Field>{kind==='metric'&&<Field label="测量时间（可选）"><input name="measurementTime" type="time" step="1" defaultValue={row?.time??undefined}/></Field>}{kind==='workout'&&<Field label="开始时间"><input name="time" type="time" step="1" defaultValue={row?.time??'12:00'} required/></Field>}</div>
   {kind==='meal'&&<>
    <Field label="餐次"><select name="type" defaultValue={row?.type}>{meals.map(x=><option key={x}>{x}</option>)}</select></Field>
    <Field label="吃了什么"><input name="name" required maxLength={160} defaultValue={row?.name} placeholder="例如：鸡腿饭、蔬菜"/></Field>
@@ -80,7 +82,7 @@ function Entry({kind,setKind,row,day,onSave,onDelete}){
    <div className="form-row"><Field label="时长（分钟）"><input type="number" name="minutes" inputMode="decimal" min=".01" max="1440" step="any" required defaultValue={row?.minutes}/></Field><Field label="活动热量（千卡，可选）"><input type="number" name="kcal" inputMode="decimal" min="0" max="10000" step="any" defaultValue={row?.kcal}/></Field></div>
    <label className="checkbox"><input name="flag" type="checkbox" defaultChecked={row?.flag}/> 标为待核对（不计入训练趋势）</label>
   </>}
-  {kind==='metric'&&<div className="form-row"><Field label="体重（kg）"><input type="number" name="weight" inputMode="decimal" min="10" max="600" step="any" defaultValue={row?.weight}/></Field><Field label="腰围（cm）"><input type="number" name="waist" inputMode="decimal" min="15" max="350" step="any" defaultValue={row?.waist}/></Field></div>}
+  {kind==='metric'&&<div className="form-row"><Field label="体重（kg）"><input type="number" name="weight" inputMode="decimal" min="10" max="600" step="any" defaultValue={row?.weight}/></Field><Field label="腰围（cm）"><input type="number" name="waist" inputMode="decimal" min="15" max="350" step="any" defaultValue={row?.waist}/></Field><Field label="体脂率（%）"><input type="number" name="bodyFatPct" inputMode="decimal" min="0.01" max="99.99" step="0.01" defaultValue={row?.bodyFatPct}/></Field></div>}
   {error&&<p role="alert" className="error">{error}</p>}
   {confirm&&<p className="error">再点一次「确认删除」即移除该条记录。</p>}
   <div className="form-actions">{row&&<Button variant="danger" type="button" onClick={()=>confirm?onDelete(kind,row):setConfirm(true)}><Trash2 size={16}/>{confirm?'确认删除':'删除'}</Button>}<Button type="submit">保存记录</Button></div>
@@ -130,13 +132,13 @@ function App(){
    const disk=load()
    const next=r.data?merge(r.data,{...disk,target:r.data.target}).next:disk
    const result=await saveCloud(r.revision,next)
-   useRemote({...result,data:next});notify('云端保存已开启')
+   useRemote({...result,data:result.data??next});notify('云端保存已开启')
   }catch(e){notify(e.message||'无法开启云端保存。')}
   finally{busy.current=false}
  }
  const data=demo?sample(today()):db
- const m=data.meals.filter(r=>r.date===day), w=data.workouts.filter(r=>r.date===day).sort((a,b)=>b.time.localeCompare(a.time)), a=data.activity.find(r=>r.date===day), b=data.metrics.find(r=>r.date===day)
- const done=data.completed.includes(day), rest=data.rest.includes(day), intake=sum(m,'kcal'), prot=m.some(x=>x.protein!=null)?sum(m,'protein'):null
+ const m=data.meals.filter(r=>r.date===day), w=data.workouts.filter(r=>r.date===day).sort((a,b)=>b.time.localeCompare(a.time)), a=data.activity.find(r=>r.date===day), measurements=data.metrics.filter(r=>r.date===day)
+ const done=data.completed.includes(day), rest=data.rest.includes(day), dailyTotal=totalOn(data,day), intake=dailyTotal?.kcal??sum(m,'kcal'), hasIntake=Boolean(dailyTotal||m.length), dailyTarget=targetOn(data,day), prot=m.some(x=>x.protein!=null)?sum(m,'protein'):null
  const since=weekStart(day), weekly=data.workouts.filter(x=>x.date>=since&&x.date<=day&&x.type.includes('力量')&&!x.flag)
  const recent=data.workouts.filter(x=>x.date<=day).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,4)
  const body=data.metrics.filter(x=>x.date<=day&&x.weight!=null).sort((a,b)=>b.date.localeCompare(a.date))[0]
@@ -149,7 +151,9 @@ function App(){
    busy.current=true
    try{
     const result=await saveCloud(cloud.revision,next)
-    setCloud({...result,data:next,mode:'cloud'});setDb(next);setDemo(false);return true
+    if(result.data)useRemote(result)
+    else {setCloud({...result,data:next,mode:'cloud'});setDb(next);setDemo(false)}
+    return true
    }catch(e){notify(e.message||'保存失败，请检查网络再试。');return false}
    finally{busy.current=false}
   }
@@ -160,7 +164,7 @@ function App(){
  async function quitDemo(){if(await commit(db))notify('已进入你的私人日志')}
  async function toggleDay(k){const arr=db[k];if(await commit({...db,[k]:arr.includes(day)?arr.filter(x=>x!==day):[...arr,day]}))notify('已更新当天状态')}
  async function save(key,r,old){
-  const next={...db,[key]:[...db[key].filter(x=>x.id!==r.id&&x.id!==old?.id&&!(key==='metrics'&&x.date===r.date)),r]}
+  const next={...db,[key]:[...db[key].filter(x=>x.id!==r.id&&x.id!==old?.id),r]}
   if(key==='workouts')next.rest=db.rest.filter(x=>x!==r.date)
   if(await commit(next)){setDay(r.date);setModal(null);notify('记录已保存')}
  }
@@ -173,13 +177,13 @@ function App(){
  const headings={home:['今日总览','把饮食、训练和日常活动放在一起看。'],log:['每日记录','记录摄入、运动与身体指标。缺失的数据留空，不当作零。'],trend:['趋势分析','在日常波动之外，看看自己这段时间的变化。'],data:['数据管理','导入手表数据、设置目标，或者备份你的个人日志。']}
  function session(r,editable=false) {const Icon=r.type.includes('力量')?Dumbbell:r.type.includes('步')?Footprints:Activity;return <div className="activity-row" key={r.id}><div className="activity-symbol"><Icon size={18}/></div><div className="activity-info"><strong>{r.type}</strong><small>{r.date.slice(5).replace('-','/')} · {r.time.slice(0,5)} · {r.source}{r.flag?' · 待核对':''}</small></div><div className="activity-metric"><strong>{fmt(r.minutes,1)} <small>分钟</small></strong>{r.kcal!=null&&<small>{fmt(r.kcal)} 活动千卡</small>}</div>{editable&&!demo&&<Button size="icon" variant="ghost" aria-label={'编辑'+r.type} onClick={()=>edit('workout',r)}><Pencil size={16}/></Button>}</div>}
  function dailyLog(){return <div className="log-grid"><Card className="pad"><div className="panel-head"><div><small className="kicker">NUTRITION</small><h2>饮食记录</h2></div><Button variant="outline" size="sm" onClick={()=>edit('meal')}><Plus size={16}/> 记一餐</Button></div>
- <p className="muted">{m.length?'已记录 '+fmt(intake)+' 千卡':'这一天还没有饮食记录。'}{prot!=null?' · 已知蛋白质 '+fmt(prot,1)+' 克':''}</p>
+ <p className="muted">{dailyTotal?'全天总量 '+fmt(intake)+' 千卡，逐餐记录另列':hasIntake?'已记录 '+fmt(intake)+' 千卡':'这一天还没有饮食记录。'}{prot!=null?' · 已知蛋白质 '+fmt(prot,1)+' 克':''}</p>
  {meals.map(t=><div className="meal-section" key={t}><h3>{t}</h3>{m.filter(r=>r.type===t).map(r=><div className="meal-line" key={r.id}><div><strong>{r.name}</strong><small>{r.estimate?'估算':'手动记录'}{r.protein!=null?' · '+fmt(r.protein,1)+' 克蛋白质':''}</small></div><strong>{fmt(r.kcal)} <small>千卡</small></strong>{!demo&&<Button size="icon" variant="ghost" aria-label={'编辑'+r.name} onClick={()=>edit('meal',r)}><Pencil size={16}/></Button>}</div>)}{!m.some(r=>r.type===t)&&<small className="muted">未记录</small>}</div>)}
  <label className="checkbox done"><input checked={done} disabled={demo} type="checkbox" onChange={()=>toggleDay('completed')}/> 已记完当天饮食（含加餐和饮料）</label></Card>
  <div className="stack"><Card className="pad"><div className="panel-head"><div><small className="kicker">WORKOUT</small><h2>运动记录</h2></div><Button variant="outline" size="sm" onClick={()=>edit('workout')}><Plus size={16}/> 记训练</Button></div>
  {w.length?w.map(r=>session(r,true)):<p className="muted">{rest?'已标记为休息日。':'这一天还没有运动记录。'}</p>}
  {!w.length&&<label className="checkbox done"><input type="checkbox" checked={rest} disabled={demo} onChange={()=>toggleDay('rest')}/> 今天是休息日</label>}</Card>
- <Card className="pad"><div className="panel-head"><div><small className="kicker">BODY</small><h2>身体指标</h2></div><Button variant="outline" size="sm" onClick={()=>edit('metric',demo?undefined:b)}>{b&&!demo?<Pencil size={16}/>:<Plus size={16}/>} {b&&!demo?'编辑':'记录'}</Button></div><div className="body-pairs"><div><span>体重</span><strong>{fmt(b?.weight,1)} <small>kg</small></strong></div><div><span>腰围</span><strong>{fmt(b?.waist,1)} <small>cm</small></strong></div></div></Card></div></div>}
+ <Card className="pad"><div className="panel-head"><div><small className="kicker">BODY</small><h2>身体指标</h2></div><Button variant="outline" size="sm" onClick={()=>edit('metric')}><Plus size={16}/> 记录</Button></div>{measurements.length?measurements.map(row=><div className="activity-row" key={row.id}><div className="activity-info"><strong>{[row.weight!=null?fmt(row.weight,2)+' kg':null,row.bodyFatPct!=null?'体脂率 '+fmt(row.bodyFatPct,2)+'%':null,row.waist!=null?'腰围 '+fmt(row.waist,1)+' cm':null].filter(Boolean).join(' · ')}</strong>{row.time&&<small>{row.time.slice(0,5)}</small>}</div>{!demo&&<Button size="icon" variant="ghost" aria-label="编辑这次身体测量" onClick={()=>edit('metric',row)}><Pencil size={16}/></Button>}</div>):<p className="muted">当天没有身体测量。</p>}</Card></div></div>}
  return <div className="shell">
  <aside className="sidebar"><div className="brand"><span className="brand-icon"><HeartPulse size={24} strokeWidth={2}/></span><div><strong>体能手记</strong><small>FIELDNOTE</small></div></div>
   <div className="menu-label">个人工作台</div><nav aria-label="主导航">{nav.map(([k,l,Icon])=><button key={k} aria-current={page===k?'page':undefined} className={page===k?'active':''} onClick={()=>go(k)}><Icon size={18}/>{l}</button>)}</nav>
@@ -192,9 +196,9 @@ function App(){
   {demo&&<div className="demo-banner"><span><CircleHelp size={17}/> <strong>示例模式</strong><span className="demo-copy">此处为虚构数据，不会混入你的日志。</span></span><Button size="sm" variant="outline" onClick={quitDemo}>进入我的日志</Button></div>}
   {page==='home'&&<>
    <div className="overview">
-    <Card className="energy"><div className="energy-copy"><div className="hero-label"><Utensils size={16}/> 当日能量</div><h2>距摄入目标</h2><div className="energy-number">{m.length?fmt(Math.abs(data.target-intake)):'—'} <span>千卡</span></div><p>{!m.length?'还没有饮食记录':intake>data.target?'已超出当天目标':'按目前已记录的饮食计算'}{!done&&m.length>0?' · 饮食未记完':''}</p></div>
-     <div className="energy-ring" aria-label={m.length?'已记录 '+intake+' 千卡':'未记录'}><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="51" className="ring-base"/><circle cx="60" cy="60" r="51" className="ring-value" strokeDasharray={Math.min(intake/data.target,1)*320+' 320'} transform="rotate(-90 60 60)"/></svg><div><strong>{m.length?fmt(intake):'—'}</strong><small>已记录 · 千卡</small></div></div>
-     <div className="energy-footer"><span>每日目标 <strong>{fmt(data.target)} 千卡</strong></span><Button variant="ghost" size="sm" onClick={()=>go('log')}>看饮食明细</Button></div>
+    <Card className="energy"><div className="energy-copy"><div className="hero-label"><Utensils size={16}/> 当日能量</div><h2>距摄入目标</h2><div className="energy-number">{hasIntake?fmt(Math.abs(dailyTarget-intake)):'—'} <span>千卡</span></div><p>{!hasIntake?'还没有饮食记录':intake>dailyTarget?'已超出当天目标':'按目前已记录的饮食计算'}{!done&&hasIntake?' · 饮食未记完':''}</p></div>
+     <div className="energy-ring" aria-label={hasIntake?'已记录 '+intake+' 千卡':'未记录'}><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="51" className="ring-base"/><circle cx="60" cy="60" r="51" className="ring-value" strokeDasharray={Math.min(intake/dailyTarget,1)*320+' 320'} transform="rotate(-90 60 60)"/></svg><div><strong>{hasIntake?fmt(intake):'—'}</strong><small>已记录 · 千卡</small></div></div>
+     <div className="energy-footer"><span>每日目标 <strong>{fmt(dailyTarget)} 千卡</strong></span><Button variant="ghost" size="sm" onClick={()=>go('log')}>看饮食明细</Button></div>
     </Card>
     <div className="top-metrics">
      <Card className="stat"><div className="stat-head"><span className="activity-symbol"><Dumbbell size={18}/></span><span>本周力量训练</span></div><div className="big">{weekly.length}<span> / 4 次</span></div><p>{weekly.length?'已记录 '+fmt(sum(weekly,'minutes'))+' 分钟':'本周尚未记录'} · 周一开始</p></Card>
@@ -210,7 +214,7 @@ function App(){
   </>}
   {page==='log'&&dailyLog()}
   {page==='trend'&&<>
-    <div className="trend-kpis"><Card className="stat"><span>最近体重</span><div className="big">{fmt(body?.weight,1)} <span>kg</span></div><p>{body?.date??'请先记录体重'}</p></Card><Card className="stat"><span>完整饮食天数</span><div className="big">{data.completed.filter(x=>dates(day,period).includes(x)&&data.meals.some(y=>y.date===x)).length}<span> / {period} 天</span></div><p>仅完整记录计入平均摄入</p></Card><Card className="stat"><span>完整日平均摄入</span><div className="big">{(()=>{const a=values(data,day,period,'intake').filter(x=>x.v!=null&&!x.partial);return a.length?fmt(sum(a,'v')/a.length):'—'})()} <span>千卡</span></div><p>不把缺失日期按零计算</p></Card></div>
+    <div className="trend-kpis"><Card className="stat"><span>最近体重</span><div className="big">{fmt(body?.weight,1)} <span>kg</span></div><p>{body?.date??'请先记录体重'}</p></Card><Card className="stat"><span>完整饮食天数</span><div className="big">{data.completed.filter(x=>dates(day,period).includes(x)&&(totalOn(data,x)||data.meals.some(y=>y.date===x))).length}<span> / {period} 天</span></div><p>仅完整记录计入平均摄入</p></Card><Card className="stat"><span>完整日平均摄入</span><div className="big">{(()=>{const a=values(data,day,period,'intake').filter(x=>x.v!=null&&!x.partial);return a.length?fmt(sum(a,'v')/a.length):'—'})()} <span>千卡</span></div><p>不把缺失日期按零计算</p></Card></div>
     <Card className="pad detail-chart"><div className="panel-head trend-head"><div><small className="kicker">TRENDS</small><h2>{labels[metric]}</h2></div><div className="segmented" aria-label="趋势时间范围">{[7,30].map(x=><button key={x} className={period===x?'selected':''} onClick={()=>setPeriod(x)}>{x} 天</button>)}</div></div><div className="segmented trend-tabs" aria-label="趋势指标">{Object.entries(labels).map(([k,t])=><button key={k} className={metric===k?'selected':''} onClick={()=>setMetric(k)}>{t}</button>)}</div><TrendChart db={data} day={day} period={period} metric={metric}/></Card>
    </>}
   {page==='data'&&<div className="data-grid">

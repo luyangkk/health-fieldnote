@@ -178,3 +178,5 @@ nav button.active{color:#204836;background:#e8f0e3;font-weight:750}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .cloud-card{grid-column:1/-1}
+
+@media (max-width:420px){.measurement-time{grid-auto-flow:row}}

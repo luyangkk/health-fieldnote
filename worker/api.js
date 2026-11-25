@@ -21,8 +21,8 @@ export async function healthAPI(request,env) {
  const owner=request.headers.get('oai-authenticated-user-id')
  if(!owner||owner.length>512)return json({error:'请先使用有权访问本站的 ChatGPT 账号登录。'},401)
  if(!['GET','PUT'].includes(request.method))return json({error:'不支持的请求。'},405)
- if(!env.DB)return json({error:'云端存储暂不可用。'},503)
- const load=async()=>env.DB.prepare('SELECT revision, payload, updated_at FROM health_logs WHERE owner_id = ?').bind(owner).first()
+ if(!env.DB&&!env.LOGS)return json({error:'云端存储暂不可用。'},503)
+ const load=async()=>env.LOGS ? env.LOGS.load() : env.DB.prepare('SELECT revision, payload, updated_at FROM health_logs WHERE owner_id = ?').bind(owner).first()
  if(request.method==='GET'){
   try{const row=await load();return json(row?{revision:row.revision,data:JSON.parse(row.payload),updatedAt:row.updated_at}:{revision:0,data:null,updatedAt:null})}
   catch{return json({error:'无法读取云端日志。'},503)}
@@ -39,10 +39,15 @@ export async function healthAPI(request,env) {
  }catch(e){return json({error:e instanceof RangeError?'记录超出单份日志容量，请先导出备份。':'存在无效记录，未保存。'},e instanceof RangeError?413:400)}
  try{
   const updatedAt=new Date().toISOString()
+  if(env.LOGS){
+   const saved=env.LOGS.save(revision,data,updatedAt,request.headers.get('x-fieldnote-schema')==='2')
+   if(!saved)return json({error:'另一台设备已更新，请读取最新云端记录后重试。'},409)
+   return json(saved)
+  }
   const result=revision===0
    ?await env.DB.prepare('INSERT INTO health_logs (owner_id, revision, payload, updated_at) VALUES (?, 1, ?, ?) ON CONFLICT(owner_id) DO NOTHING').bind(owner,payload,updatedAt).run()
    :await env.DB.prepare('UPDATE health_logs SET revision = revision + 1, payload = ?, updated_at = ? WHERE owner_id = ? AND revision = ?').bind(payload,updatedAt,owner,revision).run()
   if(!result.meta.changes)return json({error:'另一台设备已更新，请读取最新云端记录后重试。'},409)
   return json({revision:revision+1,updatedAt})
- }catch{return json({error:'云端未能确认保存，请刷新核对后重试。'},503)}
+ }catch(e){if(env.LOGS&&[409,422].includes(e.status))return json({error:e.message},e.status);return json({error:'云端未能确认保存，请刷新核对后重试。'},503)}
 }

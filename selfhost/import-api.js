@@ -67,6 +67,11 @@ export async function nothingImportAPI(request, env) {
  try { parsed = await parse(request) }
  catch (error) { return json({ error: error.status ? error.message : '无法解析 Nothing X 数据，请检查文件格式、记录和解压密码。' }, error.status ?? 400) }
  try {
+  if (env.LOGS) {
+   const dryRun = dry === 'true'
+   const result = env.LOGS.mergeNothing(parsed.data, dryRun, new Date().toISOString())
+   return json({ ...result, dryRun, rejected: parsed.rejected, files: parsed.files })
+  }
   for (let attempt = 0; attempt < 3; attempt++) {
    const row = await env.DB.prepare('SELECT revision, payload, updated_at FROM health_logs WHERE owner_id = ?').bind('unraid-owner').first()
    const revision = row?.revision ?? 0

@@ -17,5 +17,8 @@
 !selfhost/**
 !test/
 !test/**
+!docs/
+!docs/api/
+!docs/api/openapi.json
 !deploy/
 !deploy/init-tls.sh

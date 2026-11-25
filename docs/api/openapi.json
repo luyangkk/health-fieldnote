@@ -1,0 +1,7391 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Health Fieldnote dot API",
+    "version": "1.0.0",
+    "description": "Health Fieldnote 自托管版的 dot API，支持日常查询、饮食、图片、运动、体重和体脂率。已有 /api/import/nothing 使用原接口。业务约定见 DOT-API-DESIGN.md。"
+  },
+  "servers": [
+    {
+      "url": "https://{host}/api/v1",
+      "variables": {
+        "host": {
+          "default": "fieldnote.example:8443",
+          "description": "部署主机和可选端口；使用可信部署 CA。"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "PersonalToken": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "接入",
+      "description": "能力发现、身份与机器契约"
+    },
+    {
+      "name": "日期",
+      "description": "每日概览、摄入口径和记录状态"
+    },
+    {
+      "name": "餐食",
+      "description": "文字与照片餐食的记录及修正"
+    },
+    {
+      "name": "图片",
+      "description": "私有图片上传、归档和授权读取"
+    },
+    {
+      "name": "运动",
+      "description": "手动与 Nothing 来源的运动明细"
+    },
+    {
+      "name": "测量",
+      "description": "体重、体脂率和腰围的写入、修正和历史查询"
+    },
+    {
+      "name": "活动",
+      "description": "每日活动和步数快照"
+    },
+    {
+      "name": "目标",
+      "description": "有生效日期的摄入目标"
+    },
+    {
+      "name": "统计",
+      "description": "区间汇总和带缺失标记的趋势"
+    }
+  ],
+  "paths": {
+    "/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "tags": [
+          "接入"
+        ],
+        "summary": "获取实际已实现能力与容量",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "获取实际已实现能力与容量",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Capabilities"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getCurrentIdentity",
+        "tags": [
+          "接入"
+        ],
+        "summary": "获取令牌身份和权限",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "获取令牌身份和权限",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Me"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenApiContract",
+        "tags": [
+          "接入"
+        ],
+        "summary": "获取已部署版本的 OpenAPI 文档",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "已部署 API 的完整 OpenAPI 3.1.1 JSON；不是成功信封。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "openapi": {
+                      "type": "string",
+                      "const": "3.1.1"
+                    },
+                    "info": {
+                      "type": "object"
+                    },
+                    "paths": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "openapi",
+                    "info",
+                    "paths"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/days/{date}": {
+      "get": {
+        "operationId": "getDay",
+        "tags": [
+          "日期"
+        ],
+        "summary": "查询某天完整概览",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询某天完整概览",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Day"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/days/{date}/state": {
+      "get": {
+        "operationId": "getDayState",
+        "tags": [
+          "日期"
+        ],
+        "summary": "获取日期状态及可写 ETag",
+        "description": "未持久化时返回默认 meals/open 状态和版本 0 的 ETag。该 ETag 仅描述日期状态，不描述整天汇总。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "获取日期状态及可写 ETag",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DayState"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "put": {
+        "operationId": "replaceDayState",
+        "tags": [
+          "日期"
+        ],
+        "summary": "切换摄入口径或标记记完",
+        "description": "原子替换整个日期状态。版本 0 用于首次创建。total 不与逐餐累计相加；有草稿时不能标记 complete。响应 stateEtag 对应更新后的 state，响应本身不携带 ETag。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DayStateInput"
+              },
+              "examples": {
+                "total": {
+                  "summary": "全天总量，逐餐仍保留但不重复累计",
+                  "value": {
+                    "intakeMode": "total",
+                    "dailyTotalKcal": 1800,
+                    "totalIsEstimate": true,
+                    "recordingStatus": "complete",
+                    "isRestDay": false,
+                    "note": "用户确认今日总量"
+                  }
+                },
+                "meals": {
+                  "summary": "按逐餐累计，尚未记完",
+                  "value": {
+                    "intakeMode": "meals",
+                    "dailyTotalKcal": null,
+                    "totalIsEstimate": null,
+                    "recordingStatus": "open",
+                    "isRestDay": false,
+                    "note": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "切换摄入口径或标记记完",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Day"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/meals": {
+      "get": {
+        "operationId": "listMeals",
+        "tags": [
+          "餐食"
+        ],
+        "summary": "按日期、餐次和来源查询餐食",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/SourceClient"
+          },
+          {
+            "$ref": "#/components/parameters/ExternalId"
+          },
+          {
+            "name": "mealType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "recorded",
+                "all"
+              ],
+              "default": "recorded"
+            }
+          },
+          {
+            "name": "hasMedia",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 160
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "按日期、餐次和来源查询餐食",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Meal"
+                      },
+                      "maxItems": 200
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMeal",
+        "tags": [
+          "餐食"
+        ],
+        "summary": "新增文字或照片餐食",
+        "description": "mediaIds 非空时额外要求 media:read。recorded 计入日摄入，draft 不计入。写入记录和汇总在一个事务内完成。响应 mealEtag 对应 meal，响应本身不携带 ETag。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealInput"
+              },
+              "examples": {
+                "recordedFromPhoto": {
+                  "summary": "照片估算后明确记账",
+                  "value": {
+                    "date": "2026-11-25",
+                    "time": null,
+                    "mealType": "lunch",
+                    "description": "鸡腿饭，米饭约一碗",
+                    "status": "recorded",
+                    "nutrition": {
+                      "kcal": 650,
+                      "proteinGrams": 32,
+                      "carbsGrams": null,
+                      "fatGrams": null,
+                      "isEstimate": true,
+                      "kcalRange": {
+                        "min": 550,
+                        "max": 750
+                      }
+                    },
+                    "nutritionBasis": "photo_estimate",
+                    "items": [
+                      {
+                        "name": "鸡腿饭",
+                        "quantityText": "一份"
+                      }
+                    ],
+                    "mediaIds": [
+                      "media_01"
+                    ],
+                    "note": "按照片中的份量估算",
+                    "source": {
+                      "client": "dot",
+                      "externalId": "msg_example:meal:0"
+                    }
+                  }
+                },
+                "photoDraft": {
+                  "summary": "只保存照片，未识别热量，不计入摄入",
+                  "value": {
+                    "date": "2026-11-25",
+                    "mealType": "lunch",
+                    "description": "午餐照片，待确认份量",
+                    "status": "draft",
+                    "nutrition": {
+                      "kcal": null,
+                      "isEstimate": true
+                    },
+                    "nutritionBasis": "photo_estimate",
+                    "mediaIds": [
+                      "media_02"
+                    ],
+                    "source": {
+                      "client": "dot",
+                      "externalId": "msg_example:meal:1"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "source.externalId 已存在且创建内容一致，返回已有资源",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MealReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "新增文字或照片餐食",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MealReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/meals/{id}": {
+      "get": {
+        "operationId": "getMeal",
+        "tags": [
+          "餐食"
+        ],
+        "summary": "读取餐食和版本",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取餐食和版本",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Meal"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMeal",
+        "tags": [
+          "餐食"
+        ],
+        "summary": "修正餐食并返回当日合计",
+        "description": "关联新图片时额外要求 media:read。跨日期修正返回 previousDateSummary。响应 mealEtag 对应 meal，响应本身不携带 ETag。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPatch"
+              },
+              "example": {
+                "nutrition": {
+                  "kcal": 520,
+                  "kcalRange": null
+                },
+                "note": "米饭只吃了一半"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "修正餐食并返回当日合计",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MealReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMeal",
+        "tags": [
+          "餐食"
+        ],
+        "summary": "删除餐食并重新计算当日摄入",
+        "description": "软删除，不删除关联图片。返回受影响的日期汇总；相应完整状态重新置 open。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除餐食并重新计算当日摄入",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/media": {
+      "get": {
+        "operationId": "listMedia",
+        "tags": [
+          "图片"
+        ],
+        "summary": "按日期和用途查询图片",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "media:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/SourceClient"
+          },
+          {
+            "$ref": "#/components/parameters/ExternalId"
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "meal",
+                "progress",
+                "label",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "linked",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "按日期和用途查询图片",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Media"
+                      },
+                      "maxItems": 200
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadMedia",
+        "tags": [
+          "图片"
+        ],
+        "summary": "上传并归档一张图片",
+        "description": "仅 JPEG/PNG/WebP，10 MB、2500 万像素。校验并移除元数据，不接受远程 URL。source 字段是 JSON 字符串。上传字节摘要用于幂等，响应 sha256 为保存后摘要。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "media:write"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "source.externalId 已存在且创建内容一致，返回已有资源",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "上传并归档一张图片",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/media/{id}": {
+      "get": {
+        "operationId": "getMedia",
+        "tags": [
+          "图片"
+        ],
+        "summary": "读取图片元数据",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "media:read"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取图片元数据",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMediaMetadata",
+        "tags": [
+          "图片"
+        ],
+        "summary": "修正图片日期、用途或备注",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "media:write"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "修正图片日期、用途或备注",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMedia",
+        "tags": [
+          "图片"
+        ],
+        "summary": "删除未被餐食引用的图片",
+        "description": "有关联餐食时返回 MEDIA_IN_USE，不能级联删除餐食或偷偷解绑。删除后立即不可读取，7 天后清理无其他引用的文件。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "media:delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除未被餐食引用的图片",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/media/{id}/content": {
+      "get": {
+        "operationId": "getMediaContent",
+        "tags": [
+          "图片"
+        ],
+        "summary": "认证读取图片字节",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "media:read"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "图片二进制，返回 private/no-store 和 nosniff。",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/workouts": {
+      "get": {
+        "operationId": "listWorkouts",
+        "tags": [
+          "运动"
+        ],
+        "summary": "查询运动",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/SourceClient"
+          },
+          {
+            "$ref": "#/components/parameters/ExternalId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询运动",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Workout"
+                      },
+                      "maxItems": 200
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWorkout",
+        "tags": [
+          "运动"
+        ],
+        "summary": "新增运动",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "source.externalId 已存在且创建内容一致，返回已有资源",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Workout"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "新增运动",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Workout"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/workouts/{id}": {
+      "get": {
+        "operationId": "getWorkout",
+        "tags": [
+          "运动"
+        ],
+        "summary": "读取运动和版本",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取运动和版本",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Workout"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateWorkout",
+        "tags": [
+          "运动"
+        ],
+        "summary": "修正运动",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "修正运动",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Workout"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWorkout",
+        "tags": [
+          "运动"
+        ],
+        "summary": "删除运动",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除运动",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/measurements": {
+      "get": {
+        "operationId": "listMeasurements",
+        "tags": [
+          "测量"
+        ],
+        "summary": "查询体重、体脂率和腰围测量",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/SourceClient"
+          },
+          {
+            "$ref": "#/components/parameters/ExternalId"
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "description": "只返回该指标非空的记录。省略时返回所有测量。",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "weightKg",
+                "bodyFatPct",
+                "waistCm"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询测量",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Measurement"
+                      },
+                      "maxItems": 200
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMeasurement",
+        "tags": [
+          "测量"
+        ],
+        "summary": "记录体重、体脂率或腰围",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementInput"
+              },
+              "examples": {
+                "weightAndBodyFat": {
+                  "summary": "同一次称量记录体重和体脂率",
+                  "value": {
+                    "date": "2026-11-25",
+                    "time": "07:30:00",
+                    "weightKg": 70.25,
+                    "bodyFatPct": 21.5,
+                    "source": {
+                      "client": "dot",
+                      "externalId": "msg_example:measurement:0"
+                    }
+                  }
+                },
+                "bodyFatOnly": {
+                  "summary": "只记录体脂率",
+                  "value": {
+                    "date": "2026-11-25",
+                    "bodyFatPct": 21.75,
+                    "source": {
+                      "client": "dot",
+                      "externalId": "msg_example:measurement:1"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "source.externalId 已存在且创建内容一致，返回已有资源",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Measurement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "新增测量",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Measurement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/measurements/{id}": {
+      "get": {
+        "operationId": "getMeasurement",
+        "tags": [
+          "测量"
+        ],
+        "summary": "读取测量和版本",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取测量和版本",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Measurement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMeasurement",
+        "tags": [
+          "测量"
+        ],
+        "summary": "修正测量",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementPatch"
+              },
+              "example": {
+                "bodyFatPct": 21.25
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "修正测量",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Measurement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMeasurement",
+        "tags": [
+          "测量"
+        ],
+        "summary": "删除测量",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除测量",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/activity": {
+      "get": {
+        "operationId": "listDailyActivity",
+        "tags": [
+          "活动"
+        ],
+        "summary": "查询每日活动快照",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询每日活动快照",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Activity"
+                      },
+                      "maxItems": 200
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/activity/{date}": {
+      "get": {
+        "operationId": "getDailyActivity",
+        "tags": [
+          "活动"
+        ],
+        "summary": "读取某日活动及版本",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取某日活动及版本",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Activity"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "put": {
+        "operationId": "replaceDailyActivity",
+        "tags": [
+          "活动"
+        ],
+        "summary": "创建或替换每日活动",
+        "description": "新建使用 If-None-Match:*，替换使用 If-Match，缺少条件为 428。新建返回 201，替换返回 200。手动替换允许修正数值；Nothing 导入仅取更晚快照。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OptionalIfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建或替换每日活动",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Activity"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "创建成功",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Activity"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDailyActivity",
+        "tags": [
+          "活动"
+        ],
+        "summary": "删除某日活动快照",
+        "description": "保留源标识 tombstone，Nothing 重导入不自动复活该外部记录；显式手动 PUT 可作为用户重新创建的新版本。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:delete"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除某日活动快照",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/targets": {
+      "get": {
+        "operationId": "listTargets",
+        "tags": [
+          "目标"
+        ],
+        "summary": "查询摄入目标生效历史",
+        "description": "from/to 筛选 effectiveFrom，同时返回 from 时已生效的上一项，供区间解释；去重后按 effectiveFrom DESC 分页。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询摄入目标生效历史",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Target"
+                      },
+                      "maxItems": 200
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/targets/{effectiveFrom}": {
+      "get": {
+        "operationId": "getTargetChange",
+        "tags": [
+          "目标"
+        ],
+        "summary": "读取指定生效日的目标变更",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "name": "effectiveFrom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取指定生效日的目标变更",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Target"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "put": {
+        "operationId": "replaceTargetChange",
+        "tags": [
+          "目标"
+        ],
+        "summary": "创建或修正目标生效项",
+        "description": "新建使用 If-None-Match:*，替换使用 If-Match。保留历史生效口径；legacy 基线不允许通过本接口改写。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "parameters": [
+          {
+            "name": "effectiveFrom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OptionalIfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建或修正目标生效项",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Target"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "创建成功",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "ETag": {
+                "description": "单资源响应提供强 ETag；用于下次 If-Match。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Target"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTargetChange",
+        "tags": [
+          "目标"
+        ],
+        "summary": "删除一项目标变更",
+        "description": "不可删除 legacy 基线。删除后回退到之前生效的目标，响应通过 affectedRange 列出受影响区间，尚无下一生效项时 to 为 null。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:delete"
+        ],
+        "parameters": [
+          {
+            "name": "effectiveFrom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/WriteGuard"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除一项目标变更",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/summaries": {
+      "get": {
+        "operationId": "getSummaries",
+        "tags": [
+          "统计"
+        ],
+        "summary": "按区间查询有效摄入和完整性统计",
+        "description": "最多 366 天；日期两端包含。缺失不补零，平均值按有值天和完整天分别计算。day/week/month 分桶，周一为周起点。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/GroupBy"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "按区间查询有效摄入和完整性统计",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Summaries"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/trends": {
+      "get": {
+        "operationId": "getTrends",
+        "tags": [
+          "统计"
+        ],
+        "summary": "查询摄入、体重、体脂率、腰围和活动趋势",
+        "description": "最多 5 年；按日先聚合，再按桶计算。缺失为 null，体重不前向填充。",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:read"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/From"
+          },
+          {
+            "$ref": "#/components/parameters/To"
+          },
+          {
+            "$ref": "#/components/parameters/GroupBy"
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "intakeKcal",
+                "weightKg",
+                "bodyFatPct",
+                "waistCm",
+                "steps",
+                "activeKcal",
+                "totalKcal",
+                "workoutMinutes"
+              ]
+            },
+            "description": "趋势指标。bodyFatPct 为体脂率，单位为 %。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询摄入、体重、腰围和活动趋势",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              },
+              "Date": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "X-Data-Revision": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "Idempotency-Replayed": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Trends"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                },
+                "examples": {
+                  "bodyFat": {
+                    "summary": "按日查询体脂率（含缺测日）",
+                    "value": {
+                      "data": {
+                        "from": "2026-11-24",
+                        "to": "2026-11-25",
+                        "timezone": "Asia/Shanghai",
+                        "groupBy": "day",
+                        "metric": "bodyFatPct",
+                        "unit": "%",
+                        "buckets": [
+                          {
+                            "from": "2026-11-24",
+                            "to": "2026-11-24",
+                            "count": 0,
+                            "missingDays": 1,
+                            "partialDays": 0,
+                            "sum": null,
+                            "average": null,
+                            "last": null
+                          },
+                          {
+                            "from": "2026-11-25",
+                            "to": "2026-11-25",
+                            "count": 1,
+                            "missingDays": 0,
+                            "partialDays": 0,
+                            "sum": null,
+                            "average": 21.5,
+                            "last": 21.5
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "PersonalToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque personal access token",
+        "description": "个人令牌，绑定 owner；具体 scope 见各 operation 的 x-required-scopes。"
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "description": "本项目的幂等约定，16–128 字符，72 小时内同键同内容重放结果。",
+        "schema": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 16
+        }
+      },
+      "WriteGuard": {
+        "name": "X-Fieldnote",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "const": "1"
+        }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "description": "读取该资源获得的强 ETag。",
+        "schema": {
+          "type": "string",
+          "maxLength": 300
+        }
+      },
+      "OptionalIfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": false,
+        "description": "替换已有资源时必填；与 If-None-Match 二选一。",
+        "schema": {
+          "type": "string",
+          "maxLength": 300
+        }
+      },
+      "IfNoneMatch": {
+        "name": "If-None-Match",
+        "in": "header",
+        "required": false,
+        "description": "新建尚不存在的活动或目标时填 *；与 If-Match 二选一。",
+        "schema": {
+          "type": "string",
+          "const": "*"
+        }
+      },
+      "From": {
+        "name": "from",
+        "in": "query",
+        "description": "起始业务日期（包含）；省略时取最近 30 天起点。",
+        "schema": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "To": {
+        "name": "to",
+        "in": "query",
+        "description": "结束业务日期（包含）；省略时取服务端北京时间当天。",
+        "schema": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "SourceClient": {
+        "name": "sourceClient",
+        "in": "query",
+        "description": "与 externalId 一起精确筛选；未指定 from/to 时不受最近 30 天默认区间限制。查询餐食恢复结果时使用 status=all。",
+        "schema": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "ExternalId": {
+        "name": "externalId",
+        "in": "query",
+        "description": "与 sourceClient 一起精确筛选。",
+        "schema": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "GroupBy": {
+        "name": "groupBy",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week",
+            "month"
+          ],
+          "default": "day"
+        }
+      }
+    },
+    "responses": {
+      "Problem": {
+        "description": "请求失败，按 status/code 处理；所有 v1 API 错误均返回 Problem Details。",
+        "headers": {
+          "X-Request-Id": {
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "Retry-After": {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "WWW-Authenticate": {
+            "schema": {
+              "type": "string",
+              "maxLength": 300
+            }
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri-reference",
+            "default": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "requestId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pointer": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "code": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "pointer",
+                "code"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code",
+          "requestId"
+        ],
+        "additionalProperties": true
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "client": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "externalId": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "client",
+          "externalId"
+        ],
+        "additionalProperties": false,
+        "description": "直接创建记录时 client 必须等于令牌绑定的 /me.clientId；externalId 是该客户端为本条逻辑记录保存的稳定标识。"
+      },
+      "Nutrition": {
+        "type": "object",
+        "properties": {
+          "kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proteinGrams": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 500,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "carbsGrams": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fatGrams": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isEstimate": {
+            "type": "boolean"
+          },
+          "kcalRange": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "multipleOf": 0.1
+                  },
+                  "max": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "multipleOf": 0.1
+                  }
+                },
+                "required": [
+                  "min",
+                  "max"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kcal",
+          "isEstimate"
+        ],
+        "additionalProperties": false
+      },
+      "FoodItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "quantityText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "MealInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mealType": {
+            "type": "string",
+            "enum": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "snack"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "recorded"
+            ]
+          },
+          "nutrition": {
+            "$ref": "#/components/schemas/Nutrition"
+          },
+          "nutritionBasis": {
+            "type": "string",
+            "enum": [
+              "user_provided",
+              "label",
+              "photo_estimate",
+              "mixed"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoodItem"
+            },
+            "maxItems": 50
+          },
+          "mediaIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            },
+            "maxItems": 8,
+            "uniqueItems": true
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "date",
+          "mealType",
+          "description",
+          "status",
+          "nutrition",
+          "nutritionBasis",
+          "source"
+        ],
+        "additionalProperties": false,
+        "description": "recorded 要求 nutrition.kcal 非空；photo_estimate 要求 isEstimate=true；range 如存在须包含 kcal。items 只描述食物，不重复维护热量。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "recorded"
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": true
+            },
+            "then": {
+              "properties": {
+                "nutrition": {
+                  "properties": {
+                    "kcal": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "kcal"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "nutritionBasis": {
+                  "const": "photo_estimate"
+                }
+              },
+              "required": [
+                "nutritionBasis"
+              ],
+              "additionalProperties": true
+            },
+            "then": {
+              "properties": {
+                "nutrition": {
+                  "properties": {
+                    "isEstimate": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "isEstimate"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        ]
+      },
+      "Meal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mealType": {
+            "type": "string",
+            "enum": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "snack"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "recorded"
+            ]
+          },
+          "nutrition": {
+            "$ref": "#/components/schemas/NutritionRead"
+          },
+          "nutritionBasis": {
+            "type": "string",
+            "enum": [
+              "user_provided",
+              "label",
+              "photo_estimate",
+              "mixed"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoodItem"
+            },
+            "maxItems": 50
+          },
+          "mediaIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            },
+            "maxItems": 8,
+            "uniqueItems": true
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "date",
+          "time",
+          "mealType",
+          "description",
+          "status",
+          "nutrition",
+          "nutritionBasis",
+          "items",
+          "mediaIds",
+          "note",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "MealPatch": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mealType": {
+            "type": "string",
+            "enum": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "snack"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "recorded"
+            ]
+          },
+          "nutrition": {
+            "type": "object",
+            "properties": {
+              "kcal": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "multipleOf": 0.1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "proteinGrams": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 500,
+                    "multipleOf": 0.1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "carbsGrams": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2000,
+                    "multipleOf": 0.1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "fatGrams": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "multipleOf": 0.1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "isEstimate": {
+                "type": "boolean"
+              },
+              "kcalRange": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10000,
+                        "multipleOf": 0.1
+                      },
+                      "max": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10000,
+                        "multipleOf": 0.1
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "nutritionBasis": {
+            "type": "string",
+            "enum": [
+              "user_provided",
+              "label",
+              "photo_estimate",
+              "mixed"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoodItem"
+            },
+            "maxItems": 50
+          },
+          "mediaIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            },
+            "maxItems": 8,
+            "uniqueItems": true
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Merge Patch；省略字段保留，null 只清除可空字段。服务端对合并后的完整资源执行必填、范围和跨字段校验。"
+      },
+      "DayStateInput": {
+        "type": "object",
+        "properties": {
+          "intakeMode": {
+            "type": "string",
+            "enum": [
+              "meals",
+              "total"
+            ]
+          },
+          "dailyTotalKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 30000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totalIsEstimate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordingStatus": {
+            "type": "string",
+            "enum": [
+              "open",
+              "complete"
+            ]
+          },
+          "isRestDay": {
+            "type": "boolean",
+            "default": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "intakeMode",
+          "dailyTotalKcal",
+          "totalIsEstimate",
+          "recordingStatus"
+        ],
+        "additionalProperties": false,
+        "description": "meals 时两个 total 字段须 null；total 时须提供数值和布尔值。complete 不允许未处理草稿。",
+        "oneOf": [
+          {
+            "properties": {
+              "intakeMode": {
+                "const": "meals"
+              },
+              "dailyTotalKcal": {
+                "type": "null"
+              },
+              "totalIsEstimate": {
+                "type": "null"
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "properties": {
+              "intakeMode": {
+                "const": "total"
+              },
+              "dailyTotalKcal": {
+                "type": "number"
+              },
+              "totalIsEstimate": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "DayState": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intakeMode": {
+            "type": "string",
+            "enum": [
+              "meals",
+              "total"
+            ]
+          },
+          "dailyTotalKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 30000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totalIsEstimate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordingStatus": {
+            "type": "string",
+            "enum": [
+              "open",
+              "complete"
+            ]
+          },
+          "isRestDay": {
+            "type": "boolean",
+            "default": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "version",
+          "updatedAt",
+          "intakeMode",
+          "dailyTotalKcal",
+          "totalIsEstimate",
+          "recordingStatus",
+          "isRestDay",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "ActivityInput": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+          },
+          "steps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 250000
+          },
+          "activeKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 15000,
+            "multipleOf": 0.1
+          },
+          "totalKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 15000,
+            "multipleOf": 0.1
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1440,
+            "multipleOf": 0.1
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "asOf",
+          "steps",
+          "activeKcal",
+          "totalKcal",
+          "durationMinutes",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "Activity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "asOf": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+          },
+          "steps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 250000
+          },
+          "activeKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 15000
+          },
+          "totalKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 15000
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "isPartial": {
+            "type": "boolean"
+          },
+          "completenessBasis": {
+            "type": "string",
+            "enum": [
+              "timestamp_heuristic"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "date",
+          "asOf",
+          "steps",
+          "activeKcal",
+          "totalKcal",
+          "durationMinutes",
+          "source",
+          "isPartial",
+          "completenessBasis"
+        ],
+        "additionalProperties": false
+      },
+      "MeasurementInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 10,
+                "maximum": 600,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFatPct": {
+            "description": "体脂率百分数。21.5 表示 21.5%，null 表示未测量。",
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waistCm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 15,
+                "maximum": 350,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "date",
+          "source"
+        ],
+        "additionalProperties": false,
+        "description": "体重、体脂率、腰围至少一项为数值。可以单独记录体脂率，也可以将多项读数放进同一次测量。",
+        "anyOf": [
+          {
+            "required": [
+              "weightKg"
+            ],
+            "properties": {
+              "weightKg": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "required": [
+              "bodyFatPct"
+            ],
+            "properties": {
+              "bodyFatPct": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "required": [
+              "waistCm"
+            ],
+            "properties": {
+              "waistCm": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "Measurement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 10,
+                "maximum": 600
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFatPct": {
+            "description": "体脂率百分数。21.5 表示 21.5%，null 表示未测量。",
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waistCm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 15,
+                "maximum": 350
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "date",
+          "time",
+          "weightKg",
+          "bodyFatPct",
+          "waistCm",
+          "note",
+          "source"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "weightKg"
+            ],
+            "properties": {
+              "weightKg": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "required": [
+              "bodyFatPct"
+            ],
+            "properties": {
+              "bodyFatPct": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "required": [
+              "waistCm"
+            ],
+            "properties": {
+              "waistCm": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          }
+        ],
+        "description": "体重、体脂率、腰围至少一项为数值。可以单独记录体脂率，也可以将多项读数放进同一次测量。"
+      },
+      "MeasurementPatch": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 10,
+                "maximum": 600,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFatPct": {
+            "description": "体脂率百分数。21.5 表示 21.5%，null 表示未测量。",
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waistCm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 15,
+                "maximum": 350,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Merge Patch；省略字段保留，null 只清除可空字段。服务端对合并后的完整资源执行必填、范围和跨字段校验。"
+      },
+      "WorkoutInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1440,
+            "multipleOf": 0.01
+          },
+          "activeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewRequired": {
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "date",
+          "time",
+          "type",
+          "durationMinutes",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "Workout": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1440
+          },
+          "activeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewRequired": {
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "nothing",
+              "legacy"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "date",
+          "time",
+          "type",
+          "durationMinutes",
+          "activeKcal",
+          "reviewRequired",
+          "note",
+          "source",
+          "origin"
+        ],
+        "additionalProperties": false
+      },
+      "WorkoutPatch": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1440,
+            "multipleOf": 0.01
+          },
+          "activeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewRequired": {
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Merge Patch；省略字段保留，null 只清除可空字段。服务端对合并后的完整资源执行必填、范围和跨字段校验。"
+      },
+      "TargetInput": {
+        "type": "object",
+        "properties": {
+          "intakeKcal": {
+            "type": "number",
+            "minimum": 500,
+            "maximum": 10000,
+            "multipleOf": 0.1
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "intakeKcal"
+        ],
+        "additionalProperties": false
+      },
+      "Target": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "intakeKcal": {
+            "type": "number",
+            "minimum": 500,
+            "maximum": 10000
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "user",
+              "legacy_unknown_start"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "effectiveFrom",
+          "intakeKcal",
+          "note",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "MediaUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "meal",
+              "progress",
+              "label",
+              "other"
+            ]
+          },
+          "capturedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "description": "Source 对象序列化的 JSON 字符串；client 与 externalId 均必填。"
+          }
+        },
+        "required": [
+          "file",
+          "date",
+          "purpose",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "meal",
+              "progress",
+              "label",
+              "other"
+            ]
+          },
+          "capturedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000000
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25000000
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25000000
+          },
+          "sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "contentUrl": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "linkedMealIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 220,
+              "minLength": 1
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "date",
+          "purpose",
+          "capturedAt",
+          "caption",
+          "source",
+          "contentType",
+          "byteSize",
+          "width",
+          "height",
+          "sha256",
+          "contentUrl",
+          "linkedMealIds"
+        ],
+        "additionalProperties": false
+      },
+      "MediaPatch": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "meal",
+              "progress",
+              "label",
+              "other"
+            ]
+          },
+          "capturedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Merge Patch；省略字段保留，null 只清除可空字段。服务端对合并后的完整资源执行必填、范围和跨字段校验。"
+      },
+      "DailyMeasurement": {
+        "type": "object",
+        "properties": {
+          "weightKg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 10,
+                "maximum": 600
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFatPct": {
+            "description": "体脂率百分数。21.5 表示 21.5%，null 表示未测量。",
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weightMeasurementId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 220,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFatMeasurementId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 220,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waistCm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 15,
+                "maximum": 350
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waistMeasurementId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 220,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weightSelectionBasis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "time",
+                  "created_at"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFatSelectionBasis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "time",
+                  "created_at"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waistSelectionBasis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "time",
+                  "created_at"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "weightKg",
+          "bodyFatPct",
+          "weightMeasurementId",
+          "bodyFatMeasurementId",
+          "waistCm",
+          "waistMeasurementId",
+          "weightSelectionBasis",
+          "bodyFatSelectionBasis",
+          "waistSelectionBasis"
+        ],
+        "additionalProperties": false,
+        "description": "为当天每个指标独立选择最近一次有效测量。缺测指标及其 ID、选择依据均为 null。"
+      },
+      "DaySummary": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "intakeMode": {
+            "type": "string",
+            "enum": [
+              "meals",
+              "total"
+            ]
+          },
+          "intakeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mealSubtotalKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 300000000,
+            "multipleOf": 0.1
+          },
+          "recordedMealCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "draftMealCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordingStatus": {
+            "type": "string",
+            "enum": [
+              "open",
+              "complete"
+            ]
+          },
+          "isRestDay": {
+            "type": "boolean"
+          },
+          "containsEstimates": {
+            "type": "boolean"
+          },
+          "targetKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 500,
+                "maximum": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetHistoryKnown": {
+            "type": "boolean"
+          },
+          "remainingToTargetKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 30000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overTargetKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Activity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measurement": {
+            "$ref": "#/components/schemas/DailyMeasurement"
+          },
+          "mealTypeSummaries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mealType": {
+                  "type": "string",
+                  "enum": [
+                    "breakfast",
+                    "lunch",
+                    "dinner",
+                    "snack"
+                  ]
+                },
+                "kcal": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 300000000,
+                      "multipleOf": 0.1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "recordedCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "draftCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "mealType",
+                "kcal",
+                "recordedCount",
+                "draftCount"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 4
+          }
+        },
+        "required": [
+          "date",
+          "intakeMode",
+          "intakeKcal",
+          "mealSubtotalKcal",
+          "recordedMealCount",
+          "draftMealCount",
+          "recordingStatus",
+          "isRestDay",
+          "containsEstimates",
+          "targetKcal",
+          "targetHistoryKnown",
+          "remainingToTargetKcal",
+          "overTargetKcal",
+          "activity",
+          "measurement",
+          "mealTypeSummaries"
+        ],
+        "additionalProperties": false
+      },
+      "Day": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/DayState"
+          },
+          "stateEtag": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "summary": {
+            "$ref": "#/components/schemas/DaySummary"
+          }
+        },
+        "required": [
+          "state",
+          "stateEtag",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "MealReceipt": {
+        "type": "object",
+        "properties": {
+          "meal": {
+            "$ref": "#/components/schemas/Meal"
+          },
+          "mealEtag": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "daySummary": {
+            "$ref": "#/components/schemas/DaySummary"
+          },
+          "previousDateSummary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DaySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "meal",
+          "mealEtag",
+          "daySummary"
+        ],
+        "additionalProperties": false
+      },
+      "DeleteReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "affectedDates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "maxItems": 3660
+          },
+          "affectedRange": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "daySummaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DaySummary"
+            },
+            "maxItems": 2
+          }
+        },
+        "required": [
+          "id",
+          "deleted",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "PeriodTotals": {
+        "type": "object",
+        "properties": {
+          "calendarDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordedDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "completeDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "missingDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "draftMealCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordedIntakeKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "multipleOf": 0.1
+          },
+          "averageRecordedIntakeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "averageCompleteIntakeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "containsEstimates": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "calendarDays",
+          "recordedDays",
+          "completeDays",
+          "missingDays",
+          "draftMealCount",
+          "recordedIntakeKcal",
+          "averageRecordedIntakeKcal",
+          "averageCompleteIntakeKcal",
+          "containsEstimates"
+        ],
+        "additionalProperties": false
+      },
+      "SummaryBucket": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "calendarDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordedDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "completeDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "missingDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "draftMealCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordedIntakeKcal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "multipleOf": 0.1
+          },
+          "averageRecordedIntakeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "averageCompleteIntakeKcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "containsEstimates": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "calendarDays",
+          "recordedDays",
+          "completeDays",
+          "missingDays",
+          "draftMealCount",
+          "recordedIntakeKcal",
+          "averageRecordedIntakeKcal",
+          "averageCompleteIntakeKcal",
+          "containsEstimates"
+        ],
+        "additionalProperties": false
+      },
+      "Summaries": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string",
+            "const": "Asia/Shanghai"
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ]
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PeriodTotals"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryBucket"
+            },
+            "maxItems": 366
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "timezone",
+          "groupBy",
+          "totals",
+          "buckets"
+        ],
+        "additionalProperties": false
+      },
+      "TrendBucket": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "missingDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "partialDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sum": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "average": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "count",
+          "missingDays",
+          "partialDays",
+          "sum",
+          "average",
+          "last"
+        ],
+        "additionalProperties": false
+      },
+      "Trends": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string",
+            "const": "Asia/Shanghai"
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ]
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "intakeKcal",
+              "weightKg",
+              "bodyFatPct",
+              "waistCm",
+              "steps",
+              "activeKcal",
+              "totalKcal",
+              "workoutMinutes"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "kcal",
+              "kg",
+              "%",
+              "cm",
+              "steps",
+              "min"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendBucket"
+            },
+            "maxItems": 1830
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "timezone",
+          "groupBy",
+          "metric",
+          "unit",
+          "buckets"
+        ],
+        "additionalProperties": false,
+        "if": {
+          "properties": {
+            "metric": {
+              "const": "bodyFatPct"
+            }
+          },
+          "required": [
+            "metric"
+          ],
+          "additionalProperties": true
+        },
+        "then": {
+          "properties": {
+            "unit": {
+              "const": "%"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "clientId": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "tokenId": {
+            "type": "string",
+            "maxLength": 220,
+            "minLength": 1
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "records:read",
+                "records:write",
+                "records:delete",
+                "media:read",
+                "media:write",
+                "media:delete"
+              ]
+            },
+            "maxItems": 6
+          }
+        },
+        "required": [
+          "ownerId",
+          "clientId",
+          "tokenId",
+          "scopes"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string",
+            "const": "v1"
+          },
+          "serviceVersion": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "timezone": {
+            "type": "string",
+            "const": "Asia/Shanghai"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "imageContentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+              ]
+            },
+            "maxItems": 3
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "jsonBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "imageBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "imagePixels": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "imagesPerMeal": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "mediaQuotaBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "mediaRemainingBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxListLimit": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxQueryDays": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxTrendDays": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "idempotencyRetentionHours": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "jsonBytes",
+              "imageBytes",
+              "imagePixels",
+              "imagesPerMeal",
+              "mediaQuotaBytes",
+              "mediaRemainingBytes",
+              "maxListLimit",
+              "maxQueryDays",
+              "maxTrendDays",
+              "idempotencyRetentionHours"
+            ],
+            "additionalProperties": false
+          },
+          "rateLimitsPerMinute": {
+            "type": "object",
+            "properties": {
+              "read": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "write": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "mediaUpload": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "read",
+              "write",
+              "mediaUpload"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "apiVersion",
+          "serviceVersion",
+          "timezone",
+          "features",
+          "imageContentTypes",
+          "limits",
+          "rateLimitsPerMinute"
+        ],
+        "additionalProperties": false
+      },
+      "NutritionRead": {
+        "type": "object",
+        "properties": {
+          "kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proteinGrams": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "carbsGrams": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fatGrams": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isEstimate": {
+            "type": "boolean"
+          },
+          "kcalRange": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "multipleOf": 0.1
+                  },
+                  "max": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "multipleOf": 0.1
+                  }
+                },
+                "required": [
+                  "min",
+                  "max"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kcal",
+          "isEstimate"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-business-timezone": "Asia/Shanghai",
+  "x-scope-catalog": [
+    "records:read",
+    "records:write",
+    "records:delete",
+    "media:read",
+    "media:write",
+    "media:delete"
+  ],
+  "x-json-limit-bytes": 1000000,
+  "x-protocol-references": [
+    "https://spec.openapis.org/oas/v3.1.1.html",
+    "https://www.rfc-editor.org/rfc/rfc9110.html",
+    "https://www.rfc-editor.org/rfc/rfc9457.html",
+    "https://www.rfc-editor.org/rfc/rfc7396.html"
+  ]
+}

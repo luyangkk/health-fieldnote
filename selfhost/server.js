@@ -7,7 +7,9 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import site from '../dist/server/index.js'
 import { nothingImportAPI } from '../dist/server/nothing-import.js'
-import { binding, openDatabase } from './sqlite.js'
+import { openDatabase } from './sqlite.js'
+import { legacyStorage } from './v1/legacy.js'
+import { createV1Handler, maintainV1 } from './v1/router.js'
 
 process.umask(0o077)
 const origin = new URL(process.env.FIELDNOTE_ORIGIN ?? '')
@@ -30,7 +32,12 @@ const hash = v => createHash('sha256').update(v).digest()
 const expected = hash('fieldnote:' + password)
 const path = process.env.FIELDNOTE_DB ?? '/data/health.sqlite'
 const db = openDatabase(path)
-const env = { DB: binding(db) }
+const env = { LOGS: legacyStorage(db) }
+const v1 = createV1Handler(db)
+maintainV1(db)
+const maintenance = setInterval(() => {
+ try { maintainV1(db) } catch { console.error('Fieldnote storage maintenance failed') }
+}, 3600_000).unref()
 const empty = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options':'nosniff' }
 function reject(res, status, message, extras = {}) {
  res.writeHead(status, { ...empty, 'Content-Type':'text/plain; charset=utf-8', ...extras })
@@ -40,35 +47,51 @@ function reject(res, status, message, extras = {}) {
 async function handler(req,res) {
  try {
   if (req.method === 'GET' && req.url === '/healthz') {
-   db.prepare('SELECT 1 FROM health_logs LIMIT 1').get()
+   db.prepare('SELECT 1 FROM fieldnote_state LIMIT 1').get()
    return reject(res,200,'ok')
   }
   if (req.headers.host !== origin.host || !req.url?.startsWith('/') || req.url.startsWith('//') || req.url.includes('\\'))
    return reject(res,400,'Invalid request')
+  const url = new URL(req.url,origin)
+  if (url.origin !== origin.origin) return reject(res,400,'Invalid origin')
+  const api = url.pathname === '/api/v1' || url.pathname.startsWith('/api/v1/')
+  if (api) {
+   const headers = new Headers()
+   for (const name of ['origin','authorization','content-type','content-length','x-fieldnote','idempotency-key','if-match','if-none-match']) {
+    if (typeof req.headers[name] === 'string') headers.set(name, req.headers[name])
+   }
+   const hasBody = ['POST','PUT','PATCH'].includes(req.method)
+   const request = new Request(url, { method:req.method, headers, ...(hasBody ? { body:Readable.toWeb(req),duplex:'half' } : {}) })
+   return await send(req, res, await v1(request))
+  }
   const supplied = req.headers.authorization ?? ''
   const provides = supplied.startsWith('Basic ') && supplied.length < 1024
   const candidate = provides ? Buffer.from(supplied.slice(6),'base64') : Buffer.alloc(0)
   if (!timingSafeEqual(hash(candidate),expected))
    return reject(res,401,'Sign in to Fieldnote',{'WWW-Authenticate':'Basic realm="Fieldnote", charset="UTF-8"'})
   const method = req.method
-  const url = new URL(req.url,origin)
-  if (url.origin !== origin.origin) return reject(res,400,'Invalid origin')
   const importing = url.pathname === '/api/import/nothing'
   if (!['GET','HEAD','PUT'].includes(method) && !(importing && method === 'POST')) return reject(res,405,'Method not allowed')
   const hdr = new Headers({'oai-authenticated-user-id':'unraid-owner'})
-  for (const name of ['origin','content-type','content-length','x-fieldnote']) if(typeof req.headers[name] === 'string') hdr.set(name,req.headers[name])
+  for (const name of ['origin','content-type','content-length','x-fieldnote','x-fieldnote-schema']) if(typeof req.headers[name] === 'string') hdr.set(name,req.headers[name])
   const input = new Request(url, { method, headers:hdr, ...(['PUT','POST'].includes(method) ? { body:Readable.toWeb(req),duplex:'half' } : {}) })
   const response = importing ? await nothingImportAPI(input,env) : await site.fetch(input,env)
-  res.writeHead(response.status, Object.fromEntries(response.headers))
-  if(response.body)await pipeline(Readable.fromWeb(response.body),res); else res.end()
+  await send(req, res, response)
  } catch {
   if(!res.headersSent)reject(res,500,'Fieldnote request failed')
   else res.destroy()
  }
 }
+async function send(req, res, response) {
+ const headers = Object.fromEntries(response.headers)
+ if (!req.complete) headers.Connection = 'close'
+ res.writeHead(response.status, headers)
+ if (response.body && req.method !== 'HEAD') await pipeline(Readable.fromWeb(response.body), res)
+ else res.end()
+}
 const server = tls ? createHttpsServer(tls,handler) : createHttpServer(handler)
 server.requestTimeout=30000
 server.headersTimeout=10000
 server.listen(port,bind,()=>console.log('Fieldnote is ready on '+(tls?'HTTPS':'HTTP')+' port '+port))
-const stop=()=>server.close(()=>{db.close();process.exit(0)})
+const stop=()=>{clearInterval(maintenance);server.close(()=>{db.close();process.exit(0)})}
 process.on('SIGTERM',stop);process.on('SIGINT',stop)

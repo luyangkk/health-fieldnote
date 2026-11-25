@@ -41,11 +41,11 @@ export function validate(data) {
   if(!Array.isArray(list))throw Error('备份的记录列表无效。')
   count+=list.length
   if(count>30000)throw Error('备份记录过多。')
-  out[key]=list.map(({id,date,type,name,kcal,protein,estimate,time:t,minutes,source,flag,weight,waist,asOf,steps,total,partial})=>{
+  out[key]=list.map(({id,date,type,name,kcal,protein,estimate,time:t,minutes,source,flag,weight,waist,bodyFatPct,asOf,steps,total,partial})=>{
    if(!str(id,220)||!validDate(date))throw Error('存在无效日期或记录编号。')
    if(key==='meals'&&meals.includes(type)&&str(name,160)&&nm(kcal,0,10000)&&nullable(protein,0,500))return {id,date,type,name,kcal,protein:protein??null,estimate:!!estimate}
    if(key==='workouts'&&str(type,80)&&time(t)&&nm(minutes,0.01,1440)&&nullable(kcal,0,10000))return {id,date,type,time:t,minutes,kcal:kcal??null,source:source==='CMF'?'CMF':'手动',flag:flag===true}
-   if(key==='metrics'&&nullable(weight,10,600)&&nullable(waist,15,350)&&(weight!=null||waist!=null))return {id,date,weight:weight??null,waist:waist??null}
+   if(key==='metrics'&&nullable(weight,10,600)&&nullable(waist,15,350)&&(bodyFatPct==null||(nm(bodyFatPct,.01,99.99)&&Math.abs(bodyFatPct*100-Math.round(bodyFatPct*100))<1e-8))&&(t===undefined||t===null||time(t))&&(weight!=null||waist!=null||bodyFatPct!=null))return {id,date,weight:weight??null,waist:waist??null,...(bodyFatPct!==undefined?{bodyFatPct}: {}),...(t!==undefined&&(t===null||time(t))?{time:t}: {})}
    if(key==='activity'&&time(asOf)&&nm(steps,0,250000)&&nm(total,0,15000)&&nm(kcal,0,15000)&&nm(minutes,0,1440))return {id,date,asOf,steps,total,kcal,minutes,partial:!asOf.startsWith('23:59')}
    throw Error('备份包含无效记录：'+key+' / '+date)
   })
@@ -53,6 +53,11 @@ export function validate(data) {
  for(const k of ['completed','rest']){
   if(data[k]!=null && (!Array.isArray(data[k])||data[k].length>30000||data[k].some(x=>!validDate(x))))throw Error('备份包含无效状态日期。')
   out[k]=data[k]??[]
+ }
+ for(const [key,min,max] of [['dailyTotals',0,30000],['targetSchedule',500,10000]]){
+  if(data[key]===undefined)continue
+  if(!Array.isArray(data[key])||data[key].length>30000||data[key].some(r=>!r||!validDate(r.date)||!nm(r.kcal,min,max)))throw Error('备份包含无效的每日热量或目标。')
+  out[key]=data[key].map(r=>({date:r.date,kcal:r.kcal,...(key==='dailyTotals'?{estimate:r.estimate===true}:{})}))
  }
  if(data.target!=null){if(!nm(data.target,500,10000))throw Error('摄入目标超出可记录范围。');out.target=data.target}
  return out
