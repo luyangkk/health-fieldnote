@@ -7,6 +7,8 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createServer} from 'node:net'
 import {setTimeout as delay} from 'node:timers/promises'
+import * as XLSX from 'xlsx'
+import {ZipWriter,Uint8ArrayWriter,Uint8ArrayReader} from '@zip.js/zip.js'
 
 async function freePort(){
  const s=createServer();s.listen(0,'127.0.0.1');await once(s,'listening')
@@ -50,5 +52,30 @@ test('Unraid runtime rejects spoofed identity and persists/reliably restores a S
   assert.equal((await (await get()).json()).revision,2)
   await stop();copyFileSync(snap,restore);await start(restore)
   assert.equal((await (await get()).json()).data.meals[0].kcal,321)
+  const importURL=origin+'/api/import/nothing'
+  const incoming={workouts:[{'发起时间':'2030-02-03 08:14:00','运动类型':'力量训练','运动时长(分钟)':42,'活动卡路里(千卡)':142}]}
+  const post=headers=>fetch(importURL,{method:'POST',headers:{'x-fieldnote':'1','content-type':'application/json',...headers},body:JSON.stringify(incoming)})
+  assert.equal((await post({'oai-authenticated-user-id':'unraid-owner'})).status,401)
+  assert.equal((await post({authorization,origin:'https://other.example'})).status,403)
+  const imported=await post({authorization})
+  assert.equal(imported.status,200)
+  assert.equal((await imported.json()).added,1)
+  assert.equal((await (await post({authorization})).json()).added,0)
+  const afterImport=await (await get()).json()
+  assert.equal(afterImport.revision,2)
+  assert.equal(afterImport.data.meals[0].kcal,321)
+  assert.equal(afterImport.data.workouts[0].source,'CMF')
+  assert.equal((await put(1,{version:1})).status,409)
+  const workbook=XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook,XLSX.utils.json_to_sheet([{'时间':'2030-02-03 23:59:55','步数(步)':8000,'总卡路里(千卡)':2100,'活动卡路里(千卡)':450,'运动时长(分钟)':42}]),'今日活动')
+  const bytes=new Uint8Array(XLSX.write(workbook,{type:'array',bookType:'xlsx'}))
+  const zipped=new ZipWriter(new Uint8ArrayWriter(),{useWebWorkers:false})
+  await zipped.add('健康数据今日活动_203002.xlsx',new Uint8ArrayReader(bytes),{password:'test-password',useWebWorkers:false,level:0})
+  const form=new FormData()
+  form.set('file',new File([await zipped.close()],'nothing.zip'));form.set('password','test-password')
+  const uploaded=await fetch(importURL,{method:'POST',headers:{authorization,'x-fieldnote':'1'},body:form})
+  assert.equal(uploaded.status,200)
+  assert.equal((await uploaded.json()).added,1)
+  assert.equal((await (await get()).json()).data.activity[0].steps,8000)
  }finally{await stop();rmSync(dir,{force:true,recursive:true})}
 })

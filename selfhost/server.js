@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import site from '../dist/server/index.js'
+import { nothingImportAPI } from '../dist/server/nothing-import.js'
 import { binding, openDatabase } from './sqlite.js'
 
 process.umask(0o077)
@@ -50,13 +51,14 @@ async function handler(req,res) {
   if (!timingSafeEqual(hash(candidate),expected))
    return reject(res,401,'Sign in to Fieldnote',{'WWW-Authenticate':'Basic realm="Fieldnote", charset="UTF-8"'})
   const method = req.method
-  if (!['GET','HEAD','PUT'].includes(method)) return reject(res,405,'Method not allowed')
   const url = new URL(req.url,origin)
   if (url.origin !== origin.origin) return reject(res,400,'Invalid origin')
+  const importing = url.pathname === '/api/import/nothing'
+  if (!['GET','HEAD','PUT'].includes(method) && !(importing && method === 'POST')) return reject(res,405,'Method not allowed')
   const hdr = new Headers({'oai-authenticated-user-id':'unraid-owner'})
   for (const name of ['origin','content-type','content-length','x-fieldnote']) if(typeof req.headers[name] === 'string') hdr.set(name,req.headers[name])
-  const input = new Request(url, { method, headers:hdr, ...(method === 'PUT' ? { body:Readable.toWeb(req),duplex:'half' } : {}) })
-  const response = await site.fetch(input,env)
+  const input = new Request(url, { method, headers:hdr, ...(['PUT','POST'].includes(method) ? { body:Readable.toWeb(req),duplex:'half' } : {}) })
+  const response = importing ? await nothingImportAPI(input,env) : await site.fetch(input,env)
   res.writeHead(response.status, Object.fromEntries(response.headers))
   if(response.body)await pipeline(Readable.fromWeb(response.body),res); else res.end()
  } catch {

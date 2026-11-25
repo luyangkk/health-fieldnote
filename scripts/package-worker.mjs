@@ -24,4 +24,5 @@ export default {async fetch(request,env){
 }}`
 await mkdir('dist/server',{recursive:true});await mkdir('dist/.openai',{recursive:true})
 await build({stdin:{contents:wrapped,resolveDir:process.cwd(),sourcefile:'worker-entry.js'},bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:'dist/server/index.js'})
+await build({entryPoints:['selfhost/import-api.js'],bundle:true,format:'esm',platform:'node',target:'node24',outfile:'dist/server/nothing-import.js'})
 await writeFile('dist/.openai/hosting.json',await readFile('.openai/hosting.json'))
