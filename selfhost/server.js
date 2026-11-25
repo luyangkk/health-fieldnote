@@ -1,4 +1,6 @@
-import { createServer } from 'node:http'
+import { createServer as createHttpServer } from 'node:http'
+import { createServer as createHttpsServer } from 'node:https'
+import { join } from 'node:path'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { Readable } from 'node:stream'
@@ -9,12 +11,17 @@ import { binding, openDatabase } from './sqlite.js'
 process.umask(0o077)
 const origin = new URL(process.env.FIELDNOTE_ORIGIN ?? '')
 const bind = process.env.FIELDNOTE_BIND ?? '0.0.0.0'
-const port = Number(process.env.PORT ?? 8080)
+const tlsDir = process.env.FIELDNOTE_TLS_DIR
+const port = Number(process.env.PORT ?? (tlsDir ? 8443 : 8080))
+if (port === 8443 && !tlsDir) throw Error('Set FIELDNOTE_TLS_DIR to enable HTTPS on port 8443')
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw Error('Invalid PORT')
 const loopback = ['localhost','127.0.0.1','[::1]'].includes(origin.hostname)
 if (origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash ||
  !(origin.protocol === 'https:' || (origin.protocol === 'http:' && loopback && bind === '127.0.0.1')))
  throw Error('FIELDNOTE_ORIGIN must be an HTTPS origin (HTTP loopback is only for local tests)')
+
+if (tlsDir && origin.protocol !== 'https:') throw Error('Direct TLS requires an HTTPS FIELDNOTE_ORIGIN')
+const tls = tlsDir ? { key:readFileSync(join(tlsDir,'server.key')), cert:readFileSync(join(tlsDir,'server.crt')), minVersion:'TLSv1.2' } : null
 
 const password = readFileSync(process.env.FIELDNOTE_PASSWORD_FILE ?? '/run/secrets/fieldnote_password', 'utf8').replace(/\r?\n$/, '')
 if (!/^[A-Za-z0-9_-]{32,128}$/.test(password)) throw Error('Set a randomly generated password (32–128 URL-safe characters)')
@@ -29,7 +36,7 @@ function reject(res, status, message, extras = {}) {
  res.end(message)
 }
 
-const server = createServer(async (req,res) => {
+async function handler(req,res) {
  try {
   if (req.method === 'GET' && req.url === '/healthz') {
    db.prepare('SELECT 1 FROM health_logs LIMIT 1').get()
@@ -56,9 +63,10 @@ const server = createServer(async (req,res) => {
   if(!res.headersSent)reject(res,500,'Fieldnote request failed')
   else res.destroy()
  }
-})
+}
+const server = tls ? createHttpsServer(tls,handler) : createHttpServer(handler)
 server.requestTimeout=30000
 server.headersTimeout=10000
-server.listen(port,bind,()=>console.log('Fieldnote is ready on port '+port))
+server.listen(port,bind,()=>console.log('Fieldnote is ready on '+(tls?'HTTPS':'HTTP')+' port '+port))
 const stop=()=>server.close(()=>{db.close();process.exit(0)})
 process.on('SIGTERM',stop);process.on('SIGINT',stop)

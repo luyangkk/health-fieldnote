@@ -19,4 +19,4 @@ npm run build
 
 ## Unraid 自托管
 
-见 [Docker 部署、私有访问、迁移与备份](deploy/UNRAID.md)。GitHub Actions 发布 amd64 镜像到 GHCR。自托管版使用本地 SQLite 和独立账号，不依赖 ChatGPT 工作区。Sites 构建方式仍可用。
+默认使用 [单容器部署及迁移](deploy/UNRAID-SINGLE.md)；如需保留 Caddy，可参考[旧版双容器指引](deploy/UNRAID.md)。GitHub Actions 发布 amd64 镜像到 GHCR。自托管版使用本地 SQLite 和独立账号，不依赖 ChatGPT 工作区。Sites 构建方式仍可用。

@@ -17,3 +17,5 @@
 !selfhost/**
 !test/
 !test/**
+!deploy/
+!deploy/init-tls.sh
