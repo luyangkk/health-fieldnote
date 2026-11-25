@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: health-fieldnote-main
@@ -23,7 +24,7 @@ jobs:
       - name: Build and test Linux amd64 image
         run: |
           set -eu
-          docker build --pull --platform linux/amd64 --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "health-fieldnote:sha-$GITHUB_SHA" .
+          docker buildx build --load --pull --provenance=false --sbom=false --platform linux/amd64 --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "health-fieldnote:sha-$GITHUB_SHA" .
           docker pull --platform linux/amd64 caddy:2-alpine
       - name: Package images and deployment templates
         run: |
@@ -40,3 +41,16 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
+      - name: Publish and verify the private GHCR image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ghcr.io/${{ github.repository }}
+        run: |
+          set -eu
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          docker tag "health-fieldnote:sha-$GITHUB_SHA" "$IMAGE:latest"
+          docker tag "health-fieldnote:sha-$GITHUB_SHA" "$IMAGE:sha-$GITHUB_SHA"
+          docker image push --platform linux/amd64 "$IMAGE:latest"
+          docker image push --platform linux/amd64 "$IMAGE:sha-$GITHUB_SHA"
+          docker buildx imagetools inspect "$IMAGE:latest"
