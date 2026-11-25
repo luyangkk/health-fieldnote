@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.local
+.env
+.env.*
+!.env.example
+*.zip
+*.xlsx
+*.sqlite
+*.sqlite3
+*.db
+*个人记录导入*.json
+*备份*.json

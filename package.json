@@ -1,0 +1,28 @@
+{
+  "name": "health-fieldnote",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/package-worker.mjs",
+    "dev": "vite --host 0.0.0.0",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@radix-ui/react-slot": "^1.2.0",
+    "@radix-ui/react-dialog": "^1.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.0",
+    "lucide-react": "^0.511.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "@zip.js/zip.js": "^2.8.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.1.0",
+    "@tailwindcss/vite": "^4.1.0"
+  }
+}
