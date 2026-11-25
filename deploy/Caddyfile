@@ -1,0 +1,9 @@
+{
+  auto_https disable_redirects
+  admin off
+  skip_install_trust
+}
+{$FIELDNOTE_ORIGIN} {
+  tls internal
+  reverse_proxy fieldnote:8080
+}

@@ -1,0 +1,26 @@
+name: health-fieldnote
+services:
+  fieldnote:
+    image: ${FIELDNOTE_IMAGE:-ghcr.io/luyangkk/health-fieldnote:latest}
+    restart: unless-stopped
+    environment:
+      FIELDNOTE_ORIGIN: ${FIELDNOTE_ORIGIN:?Set the HTTPS origin}
+    volumes:
+      - ${FIELDNOTE_DATA_DIR:?Set the local SSD data path}:/data
+      - ${FIELDNOTE_PASSWORD_FILE:?Set a local password file}:/run/secrets/fieldnote_password:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      FIELDNOTE_ORIGIN: ${FIELDNOTE_ORIGIN:?Set the HTTPS origin}
+    ports:
+      - "${FIELDNOTE_LAN_IP:?Set Unraid's LAN IP}:8443:8443/tcp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${FIELDNOTE_TLS_DIR:?Set a local TLS state path}:/data
+    depends_on:
+      fieldnote:
+        condition: service_healthy
