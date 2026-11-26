@@ -44,9 +44,9 @@ export function validate(data) {
   out[key]=list.map(({id,date,type,name,kcal,protein,estimate,time:t,minutes,source,flag,weight,waist,bodyFatPct,asOf,steps,total,partial})=>{
    if(!str(id,220)||!validDate(date))throw Error('存在无效日期或记录编号。')
    if(key==='meals'&&meals.includes(type)&&str(name,160)&&nm(kcal,0,10000)&&nullable(protein,0,500))return {id,date,type,name,kcal,protein:protein??null,estimate:!!estimate}
-   if(key==='workouts'&&str(type,80)&&time(t)&&nm(minutes,0.01,1440)&&nullable(kcal,0,10000))return {id,date,type,time:t,minutes,kcal:kcal??null,source:source==='CMF'?'CMF':'手动',flag:flag===true}
+   if(key==='workouts'&&str(type,80)&&time(t)&&nm(minutes,0.01,1440)&&nullable(kcal,0,10000))return {id,date,type,time:t,minutes,kcal:kcal??null,source:['CMF','Apple 健康'].includes(source)?source:'手动',flag:flag===true}
    if(key==='metrics'&&nullable(weight,10,600)&&nullable(waist,15,350)&&(bodyFatPct==null||(nm(bodyFatPct,.01,99.99)&&Math.abs(bodyFatPct*100-Math.round(bodyFatPct*100))<1e-8))&&(t===undefined||t===null||time(t))&&(weight!=null||waist!=null||bodyFatPct!=null))return {id,date,weight:weight??null,waist:waist??null,...(bodyFatPct!==undefined?{bodyFatPct}: {}),...(t!==undefined&&(t===null||time(t))?{time:t}: {})}
-   if(key==='activity'&&time(asOf)&&nm(steps,0,250000)&&nm(total,0,15000)&&nm(kcal,0,15000)&&nm(minutes,0,1440))return {id,date,asOf,steps,total,kcal,minutes,partial:!asOf.startsWith('23:59')}
+   if(key==='activity'&&time(asOf)&&nm(steps,0,250000)&&nm(total,0,15000)&&nm(kcal,0,15000)&&nullable(minutes,0,1440))return {id,date,asOf,steps,total,kcal,minutes:minutes??null,partial:typeof partial==='boolean'?partial:!asOf.startsWith('23:59')}
    throw Error('备份包含无效记录：'+key+' / '+date)
   })
  }

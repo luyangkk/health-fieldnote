@@ -105,7 +105,7 @@ function ImportForm({db,onImport}){
  </form></>
 }
 function App(){
- const [db,setDb]=useState(load),[page,setPage]=useState('home'),[day,setDay]=useState(today),[demo,setDemo]=useState(()=>!localStorage.getItem(dbKey)),[modal,setModal]=useState(null),[kind,setKind]=useState('meal'),[period,setPeriod]=useState(7),[metric,setMetric]=useState('intake'),[notice,setNotice]=useState(''),[target,setTarget]=useState(db.target)
+ const [db,setDb]=useState(load),[page,setPage]=useState('home'),[day,setDay]=useState(today),[demo,setDemo]=useState(()=>{try{return !localStorage.getItem(dbKey)}catch{return true}}),[modal,setModal]=useState(null),[kind,setKind]=useState('meal'),[period,setPeriod]=useState(7),[metric,setMetric]=useState('intake'),[notice,setNotice]=useState(''),[target,setTarget]=useState(db.target)
  const [cloud,setCloud]=useState({mode:'checking',revision:0}), busy=useRef(false), cloudRef=useRef(cloud)
  cloudRef.current=cloud
  const hasEntries=data=>Object.keys({meals:1,workouts:1,activity:1,metrics:1,completed:1,rest:1}).some(k=>data[k].length)||data.target!==fresh().target

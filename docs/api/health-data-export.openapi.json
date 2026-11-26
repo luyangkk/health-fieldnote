@@ -1,0 +1,428 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Health Fieldnote — Health Data Export Webhook",
+    "version": "1.0.0",
+    "description": "Self-hosted only. Receives Health Data Export 1.4 Raw/Single File JSON. Bearer auth replaces the normal v1 write guard; X-Fieldnote and Idempotency-Key are not required. See deploy/HEALTH-DATA-EXPORT.md for data conversion, full-day coverage, stale-data and manual-edit rules."
+  },
+  "servers": [
+    {
+      "url": "https://10.0.0.66:8443"
+    }
+  ],
+  "paths": {
+    "/api/import/health-data-export": {
+      "post": {
+        "operationId": "importHealthDataExport",
+        "summary": "Import or preview Health Data Export Raw JSON",
+        "security": [
+          {
+            "PersonalToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "records:write"
+        ],
+        "x-max-body-bytes": 35000000,
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Validate and calculate changes, then roll back both records and freshness markers."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "export_date"
+                    ],
+                    "properties": {
+                      "export_date": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "date_range": {
+                        "type": "object",
+                        "required": [
+                          "start",
+                          "end"
+                        ],
+                        "properties": {
+                          "start": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "end": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "days": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      "metrics": {
+                        "type": "array",
+                        "maxItems": 250,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "aggregation_level": {
+                              "type": "string"
+                            },
+                            "unit": {
+                              "type": "string"
+                            },
+                            "data_points": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                              }
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      },
+                      "workouts": {
+                        "type": "array",
+                        "maxItems": 10000,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "category_metrics": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "sleep_summaries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "required": [
+                          "metrics"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "workouts"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "category_metrics"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "sleep_summaries"
+                        ]
+                      }
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "test": {
+                        "const": true
+                      },
+                      "is_test": {
+                        "const": true
+                      },
+                      "type": {
+                        "const": "test"
+                      },
+                      "metrics": {
+                        "type": "array",
+                        "maxItems": 0
+                      },
+                      "workouts": {
+                        "type": "array",
+                        "maxItems": 0
+                      },
+                      "category_metrics": {
+                        "type": "array",
+                        "maxItems": 0
+                      },
+                      "sleep_summaries": {
+                        "type": "array",
+                        "maxItems": 0
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "required": [
+                          "test"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "is_test"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "type"
+                        ]
+                      }
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Import result. A duplicate request is successful with changed=false. The entire batch is atomic.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "added": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "updated": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "skipped": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "stale": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "conflicts": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "changed": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "measurements": {
+                              "type": "object",
+                              "properties": {
+                                "added": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "updated": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "added",
+                                "updated"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "workouts": {
+                              "type": "object",
+                              "properties": {
+                                "added": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "updated": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "added",
+                                "updated"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "activity": {
+                              "type": "object",
+                              "properties": {
+                                "added": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "updated": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "added",
+                                "updated"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "measurements",
+                            "workouts",
+                            "activity"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "ignored": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "updatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "test": {
+                          "type": "boolean"
+                        },
+                        "dryRun": {
+                          "type": "boolean"
+                        },
+                        "wouldChange": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "added",
+                        "updated",
+                        "skipped",
+                        "stale",
+                        "conflicts",
+                        "changed",
+                        "details",
+                        "ignored",
+                        "warnings",
+                        "revision",
+                        "updatedAt",
+                        "test",
+                        "dryRun",
+                        "wouldChange"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Authentication, validation, freshness conflict, size, rate, or storage error.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "PersonalToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Personal access token created with selfhost/token.js and records:write scope."
+      }
+    }
+  }
+}

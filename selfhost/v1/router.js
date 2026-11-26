@@ -30,7 +30,7 @@ function reply(result, requestId, revision) {
 
 function capabilities(repo) {
  return { apiVersion: 'v1', serviceVersion: '1.0.0', timezone: zone,
-  features: ['meals', 'daily-intake', 'media', 'workouts', 'measurements', 'body-fat', 'activity', 'targets', 'summaries', 'trends'],
+  features: ['meals', 'daily-intake', 'media', 'workouts', 'measurements', 'body-fat', 'activity', 'targets', 'summaries', 'trends', 'health-data-export'],
   imageContentTypes: imageTypes, limits: { jsonBytes: jsonLimit, imageBytes: imageLimit, imagePixels: pixelLimit, imagesPerMeal: 8,
    mediaQuotaBytes: imageQuota, mediaRemainingBytes: Math.max(0, imageQuota - imageBytesUsed(repo)), maxListLimit: 200,
    maxQueryDays: 366, maxTrendDays: 1827, idempotencyRetentionHours: 72 }, rateLimitsPerMinute: limits }

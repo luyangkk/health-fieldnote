@@ -19,6 +19,6 @@
 !test/**
 !docs/
 !docs/api/
-!docs/api/openapi.json
+!docs/api/*.json
 !deploy/
 !deploy/init-tls.sh

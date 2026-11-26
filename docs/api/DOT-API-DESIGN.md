@@ -6,6 +6,8 @@
 
 首版覆盖日常查询、饮食、图片、运动和身体测量。新版导入、整库导出和增量同步延后。接口契约见 [openapi.json](openapi.json)。现有 Nothing X 导入继续使用 `POST /api/import/nothing`，调用方式见 [IMPORT-API.md](../../deploy/IMPORT-API.md)。
 
+Health Data Export 自动上传使用独立的 `POST /api/import/health-data-export`，仅要求带 `records:write` 权限的 Bearer 令牌，由服务端处理去重和更新。它不要求 `X-Fieldnote` 或 `Idempotency-Key`，也不接受普通 v1 单条记录正文。配置和合并规则见[自动导入说明](../../deploy/HEALTH-DATA-EXPORT.md)，契约见 [health-data-export.openapi.json](health-data-export.openapi.json)。原有 v1 写入规则保持不变。每日活动的 `durationMinutes` 现允许为空，表示导出中未提供锻炼时间。
+
 ## 日常对话如何调用
 
 | 用户表达 | dot 调用流程 | 用户看到的结果 |

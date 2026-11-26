@@ -10,7 +10,7 @@ COPY worker/ ./worker/
 COPY scripts/ ./scripts/
 COPY drizzle/ ./drizzle/
 COPY selfhost/ ./selfhost/
-COPY docs/api/openapi.json ./docs/api/openapi.json
+COPY docs/api/ ./docs/api/
 COPY test/ ./test/
 COPY deploy/init-tls.sh ./deploy/init-tls.sh
 RUN npm run build && npm test
@@ -25,7 +25,7 @@ COPY --from=build /app/dist/server/ ./dist/server/
 COPY --from=build /app/drizzle/ ./drizzle/
 COPY --from=build /app/selfhost/ ./selfhost/
 COPY --from=build /app/src/lib.js ./src/lib.js
-COPY --from=build /app/docs/api/openapi.json ./docs/api/openapi.json
+COPY --from=build /app/docs/api/ ./docs/api/
 COPY --from=build /app/node_modules/ ./node_modules/
 USER 1000:1000
 EXPOSE 8080 8443

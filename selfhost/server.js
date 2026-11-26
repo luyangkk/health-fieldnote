@@ -10,6 +10,7 @@ import { nothingImportAPI } from '../dist/server/nothing-import.js'
 import { openDatabase } from './sqlite.js'
 import { legacyStorage } from './v1/legacy.js'
 import { createV1Handler, maintainV1 } from './v1/router.js'
+import { createHealthExportHandler, healthExportPath } from './health-data-export.js'
 
 process.umask(0o077)
 const origin = new URL(process.env.FIELDNOTE_ORIGIN ?? '')
@@ -34,6 +35,7 @@ const path = process.env.FIELDNOTE_DB ?? '/data/health.sqlite'
 const db = openDatabase(path)
 const env = { LOGS: legacyStorage(db) }
 const v1 = createV1Handler(db)
+const healthExport = createHealthExportHandler(db)
 maintainV1(db)
 const maintenance = setInterval(() => {
  try { maintainV1(db) } catch { console.error('Fieldnote storage maintenance failed') }
@@ -55,14 +57,14 @@ async function handler(req,res) {
   const url = new URL(req.url,origin)
   if (url.origin !== origin.origin) return reject(res,400,'Invalid origin')
   const api = url.pathname === '/api/v1' || url.pathname.startsWith('/api/v1/')
-  if (api) {
+  if (api || url.pathname === healthExportPath) {
    const headers = new Headers()
    for (const name of ['origin','authorization','content-type','content-length','x-fieldnote','idempotency-key','if-match','if-none-match']) {
     if (typeof req.headers[name] === 'string') headers.set(name, req.headers[name])
    }
    const hasBody = ['POST','PUT','PATCH'].includes(req.method)
    const request = new Request(url, { method:req.method, headers, ...(hasBody ? { body:Readable.toWeb(req),duplex:'half' } : {}) })
-   return await send(req, res, await v1(request))
+   return await send(req, res, await (api ? v1 : healthExport)(request))
   }
   const supplied = req.headers.authorization ?? ''
   const provides = supplied.startsWith('Basic ') && supplied.length < 1024

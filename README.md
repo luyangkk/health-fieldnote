@@ -10,6 +10,7 @@ Health Fieldnote is a personal journal for meals, training, weight, body fat, an
 - Record weight, body fat percentage, and waist circumference together or separately. View daily readings and trends.
 - Store private meal and progress photos in the self-hosted SQLite database.
 - Import Nothing X ZIP and XLSX exports with workout details and daily activity snapshots. The importer skips GPS routes, heart rate, stress, and account information.
+- Receive Health Data Export Raw JSON webhooks with Bearer authentication. Import weight, body fat, workouts, and daily activity with persistent deduplication and protection for manual edits. See the [setup and merge rules](deploy/HEALTH-DATA-EXPORT.md).
 - Use the browser locally or connect it to the same self-hosted database as dot. The OpenAI Sites build supports the browser journal and D1 storage.
 
 ## Quick start

@@ -5347,10 +5347,18 @@
             "multipleOf": 0.1
           },
           "durationMinutes": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1440,
-            "multipleOf": 0.1
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1440,
+                "multipleOf": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "锻炼时间（分钟）；Health Data Export 未提供此指标时为 null，不以训练总时长代替。"
           },
           "source": {
             "$ref": "#/components/schemas/Source"
@@ -5411,9 +5419,17 @@
             "maximum": 15000
           },
           "durationMinutes": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1440
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1440
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "锻炼时间（分钟）；Health Data Export 未提供此指标时为 null，不以训练总时长代替。"
           },
           "source": {
             "$ref": "#/components/schemas/Source"
@@ -5910,7 +5926,8 @@
             "enum": [
               "manual",
               "nothing",
-              "legacy"
+              "legacy",
+              "health-data-export"
             ]
           }
         },

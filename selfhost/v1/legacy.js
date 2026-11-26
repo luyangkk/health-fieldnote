@@ -17,7 +17,7 @@ function convert(kind, row, now, previous, client) {
    time: previous?.time ?? null, note: previous?.note ?? null, items: previous?.items ?? [], mediaIds: previous?.mediaIds ?? [] }
  }
  if (kind === 'workout') return { ...previous, ...base, time: time(row.time), type: row.type, durationMinutes: row.minutes, activeKcal: row.kcal,
-  origin: previous?.origin ?? (row.source === 'CMF' ? 'nothing' : client === 'legacy' ? 'legacy' : 'manual'), reviewRequired: row.flag, note: previous?.note ?? null }
+  origin: previous?.origin ?? (row.source === 'CMF' ? 'nothing' : row.source === 'Apple 健康' ? 'health-data-export' : client === 'legacy' ? 'legacy' : 'manual'), reviewRequired: row.flag, note: previous?.note ?? null }
  if (kind === 'measurement') return { ...previous, ...base, time: Object.hasOwn(row, 'time') ? time(row.time) : previous?.time ?? null, weightKg: row.weight, waistCm: row.waist,
   bodyFatPct: Object.hasOwn(row, 'bodyFatPct') ? row.bodyFatPct : previous?.bodyFatPct ?? null, note: previous?.note ?? null }
  return { ...base, asOf: time(row.asOf), steps: row.steps, activeKcal: row.kcal, totalKcal: row.total, durationMinutes: row.minutes,
@@ -27,7 +27,7 @@ function convert(kind, row, now, previous, client) {
 export function project(kind, row) {
  const { id, date } = row
  if (kind === 'meal') return { id, date, type: meals[mealTypes.indexOf(row.mealType)], name: row.description, kcal: row.nutrition.kcal, protein: row.nutrition.proteinGrams, estimate: row.nutrition.isEstimate }
- if (kind === 'workout') return { id, date, type: row.type, time: row.time, minutes: row.durationMinutes, kcal: row.activeKcal, source: row.origin === 'nothing' ? 'CMF' : '手动', flag: row.reviewRequired }
+ if (kind === 'workout') return { id, date, type: row.type, time: row.time, minutes: row.durationMinutes, kcal: row.activeKcal, source: row.origin === 'nothing' ? 'CMF' : row.origin === 'health-data-export' ? 'Apple 健康' : '手动', flag: row.reviewRequired }
  if (kind === 'measurement') return { id, date, time: row.time, weight: row.weightKg, waist: row.waistCm, bodyFatPct: row.bodyFatPct }
  return { id: 'activity:' + date, date, asOf: row.asOf, steps: row.steps, total: row.totalKcal, kcal: row.activeKcal, minutes: row.durationMinutes, partial: row.isPartial }
 }
